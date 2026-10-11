@@ -138,6 +138,16 @@ class ServiceWorkerTests(TestCase):
         self.assertIn("resposta.status < 500", corpo)
         self.assertIn("respostaComAviso", corpo)
 
+    def test_precache_do_sw_ignora_a_cache_http(self):
+        """Sem `cache: 'reload'` o install guarda CSS/JS antigos da cache do browser."""
+        corpo = self.client.get(reverse("pwa:service_worker")).content.decode()
+        self.assertIn("cache: 'reload'", corpo)
+        self.assertNotIn("cache.addAll(ESTATICOS);", corpo)
+
+    def test_precache_inclui_o_script_do_campo_de_data(self):
+        corpo = self.client.get(reverse("pwa:service_worker")).content.decode()
+        self.assertIn("'/static/js/data-br.js'", corpo)
+
     def test_pagina_offline_existe_sem_sessao(self):
         resposta = self.client.get(reverse("pwa:offline"))
         self.assertEqual(resposta.status_code, 200)

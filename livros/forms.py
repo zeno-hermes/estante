@@ -8,13 +8,35 @@ from .models import LinkLivro, Livro, NotaLivro
 
 
 class DataBRWidget(forms.TextInput):
-    """Campo de data em texto, sempre em dd/mm/aaaa.
+    """Campo de data em texto, sempre em dd/mm/aaaa, com ajuda no telemóvel.
 
-    Não uso `type="date"`: o campo nativo do browser mostra a data no formato
-    do sistema do utilizador (aparece mm/dd/yyyy num browser em inglês), e não
-    há forma de o forçar pela página. Assim o formato é sempre o mesmo,
-    independentemente do browser.
+    Não uso só `type="date"`: o campo nativo mostra a data no formato do sistema do
+    utilizador (aparece mm/dd/yyyy num browser em inglês) e não há forma de o forçar
+    pela página. Este widget dá as duas coisas:
+
+    - o campo de escrita é de texto (dd/mm/aaaa sempre igual) e o JavaScript
+      (`static/js/data-br.js`) insere as barras enquanto se escrevem só números —
+      o teclado numérico do telemóvel passa a servir, sem depender da tecla «/»;
+    - ao lado há um campo `type="date"` nativo, só para abrir o calendário do
+      sistema. Não tem `name`, portanto não é submetido: quem guarda a data é o
+      campo de texto.
     """
+
+    template_name = "widgets/data_br.html"
+
+    def __init__(self, attrs=None):
+        padrao = {
+            "placeholder": "dd/mm/aaaa",
+            "inputmode": "numeric",
+            "autocomplete": "off",
+            "maxlength": "10",
+            "pattern": r"[0-3][0-9]/[0-1][0-9]/[0-9]{4}",
+            "size": 12,
+            "data-campo-data-br": "1",
+        }
+        if attrs:
+            padrao.update(attrs)
+        super().__init__(padrao)
 
     def format_value(self, value):
         if value in (None, ""):
@@ -24,6 +46,26 @@ class DataBRWidget(forms.TextInput):
         if isinstance(value, date):
             return value.strftime("%d/%m/%Y")
         return super().format_value(value)
+
+    def valor_iso(self, value):
+        """A mesma data em aaaa-mm-dd, para o campo nativo (calendário)."""
+        if isinstance(value, datetime):
+            return value.date().isoformat()
+        if isinstance(value, date):
+            return value.isoformat()
+        if isinstance(value, str) and value.strip():
+            texto = value.strip()
+            for formato in ("%d/%m/%Y", "%Y-%m-%d"):
+                try:
+                    return datetime.strptime(texto, formato).date().isoformat()
+                except ValueError:
+                    continue
+        return ""
+
+    def get_context(self, name, value, attrs):
+        contexto = super().get_context(name, value, attrs)
+        contexto["widget"]["valor_iso"] = self.valor_iso(value)
+        return contexto
 
 
 class EstrelasField(forms.TypedChoiceField):

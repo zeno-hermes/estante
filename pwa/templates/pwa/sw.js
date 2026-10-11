@@ -16,6 +16,7 @@ const CACHE_DADOS = 'estante-dados-{{ cache_version }}';
 const ESTATICOS = [
   '/static/pwa/pwa.css',
   '/static/pwa/pwa.js',
+  '/static/js/data-br.js',
   '/static/pwa/icons/icon-192.png',
   '/static/pwa/icons/icon-512.png',
   '/pwa/manifest.webmanifest',
@@ -25,7 +26,10 @@ const ESTATICOS = [
 self.addEventListener('install', (evento) => {
   evento.waitUntil((async () => {
     const cache = await caches.open(CACHE_ESTATICOS);
-    await cache.addAll(ESTATICOS);
+    // `cache: 'reload'` obrigatório: sem isto o install pode buscar os ficheiros
+    // à cache HTTP do browser e guardar versões antigas do CSS/JS debaixo do nome
+    // da versão nova — a app fica com estilos antigos e parece que o bump não pegou.
+    await cache.addAll(ESTATICOS.map((caminho) => new Request(caminho, { cache: 'reload' })));
     await self.skipWaiting();
   })());
 });

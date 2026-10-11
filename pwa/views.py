@@ -23,7 +23,7 @@ from livros.models import LinkLivro, Livro, NotaLivro
 # estáticos são servidos a partir da cache do service worker e, sem este passo,
 # o telemóvel continua a mostrar o que tinha guardado (parece que a alteração
 # não pegou).
-PWA_CACHE_VERSION = "2026-10-11.3"
+PWA_CACHE_VERSION = "2026-10-12.2"
 
 PAGINA_TAMANHO = 25
 

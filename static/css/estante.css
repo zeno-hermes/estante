@@ -260,6 +260,27 @@ a:hover { color: var(--cor-primaria-escura); }
 .campo--pesquisa { min-width: 240px; flex: 1; }
 .campo-duplo { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
+/* Data: campo de texto (dd/mm/aaaa) + botão de calendário nativo ao lado */
+.campo-data { display: flex; gap: 0.5rem; align-items: stretch; }
+.campo-data input[type="text"] { flex: 1; min-width: 0; }
+/* O botão é nosso (com ícone SVG, sempre visível); o campo nativo fica invisível
+   por cima para o toque abrir o calendário do sistema em qualquer plataforma —
+   o ícone nativo do `type=date` não é desenhado no Chrome móvel. */
+.campo-data__botao {
+  position: relative; flex: 0 0 46px;
+  display: grid; place-items: center;
+  border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-pequeno);
+  background: var(--cor-superficie); color: var(--cor-texto-suave);
+}
+.campo-data__botao svg { width: 20px; height: 20px; }
+.campo-data__nativo {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  padding: 0; border: 0; opacity: 0; color: transparent; cursor: pointer;
+}
+.campo-data__nativo::-webkit-calendar-picker-indicator {
+  width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer;
+}
+
 label, legend { font-weight: 550; font-size: 0.9rem; }
 .obrigatorio { color: var(--cor-perigo); }
 .ajuda { font-size: 0.82rem; color: var(--cor-texto-suave); margin: 0; }

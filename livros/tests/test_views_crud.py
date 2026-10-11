@@ -1,6 +1,7 @@
 """Testes do CRUD de livros no site desktop: criação, edição, remoção,
 isolamento entre utilizadores, filtros, ordenação e paginação."""
 
+import re
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
@@ -83,10 +84,17 @@ class CriarLivroTests(BaseComUtilizador):
         self.assertContains(resposta, "formato dd/mm/aaaa")
         self.assertFalse(Livro.objects.filter(titulo="Data má").exists())
 
-    def test_campo_de_data_usa_dd_mm_aaaa_e_nao_o_campo_nativo_do_browser(self):
+    def test_campo_de_data_usa_dd_mm_aaaa_com_calendario_ao_lado(self):
         resposta = self.client.get(reverse("livros:criar"))
-        self.assertContains(resposta, 'placeholder="dd/mm/aaaa"')
-        self.assertNotContains(resposta, 'type="date"')
+        html = resposta.content.decode()
+        self.assertIn('placeholder="dd/mm/aaaa"', html)
+        # o campo de escrita é de texto (o nativo mostra o formato do sistema)
+        campo_texto = re.search(r'<input type="text"[^>]*data-campo-data-br[^>]*>', html)
+        self.assertIsNotNone(campo_texto)
+        # e há um campo nativo só para o calendário, sem `name` (não é submetido)
+        nativo = re.search(r'<input type="date"[^>]*>', html)
+        self.assertIsNotNone(nativo)
+        self.assertNotIn("name=", nativo.group(0))
 
     def test_edicao_mostra_a_data_existente_em_dd_mm_aaaa(self):
         livro = self.criar_livro()

@@ -1,0 +1,15 @@
+<div class="campo-data">
+  {% include "django/forms/widgets/text.html" %}
+  <span class="campo-data__botao">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </svg>
+    <input type="date"
+           class="campo-data__nativo"
+           value="{{ widget.valor_iso }}"
+           aria-label="Escolher a data no calendário"
+           data-campo-data-calendario
+           data-para="{{ widget.attrs.id }}">
+  </span>
+</div>
