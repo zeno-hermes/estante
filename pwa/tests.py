@@ -132,6 +132,12 @@ class ServiceWorkerTests(TestCase):
         self.assertIn("estante-dados-", corpo)
         self.assertIn("network-first", corpo.lower().replace("network first", "network-first"))
 
+    def test_sw_recorre_a_cache_quando_o_servidor_devolve_erro(self):
+        """502/503 (aplicação em baixo atrás do Nginx) têm de dar a cópia guardada."""
+        corpo = self.client.get(reverse("pwa:service_worker")).content.decode()
+        self.assertIn("resposta.status < 500", corpo)
+        self.assertIn("respostaComAviso", corpo)
+
     def test_pagina_offline_existe_sem_sessao(self):
         resposta = self.client.get(reverse("pwa:offline"))
         self.assertEqual(resposta.status_code, 200)

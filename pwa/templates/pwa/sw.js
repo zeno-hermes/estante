@@ -79,15 +79,22 @@ async function paginaNetworkFirst(pedido) {
     if (guardavel) {
       const cache = await caches.open(CACHE_DADOS);
       cache.put(pedido, resposta.clone());
+      return resposta;
     }
-    return resposta;
+    // 5xx = servidor alcançável mas aplicação em baixo (ex.: Nginx a devolver 502
+    // porque o serviço parou). Para quem está no telemóvel isso é o mesmo que não
+    // haver rede: mostra-se o que estava guardado, com aviso, em vez de uma página
+    // de erro crua do proxy.
+    if (resposta.status < 500) return resposta;
   } catch (erro) {
-    const emCache = await caches.match(pedido);
-    if (emCache) return respostaComAviso(emCache);
-    const offline = await caches.match('/pwa/offline/');
-    if (offline) return offline;
-    return new Response('Sem ligação.', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    // falha de rede: cai no mesmo caminho
   }
+
+  const emCache = await caches.match(pedido);
+  if (emCache) return respostaComAviso(emCache);
+  const offline = await caches.match('/pwa/offline/');
+  if (offline) return offline;
+  return new Response('Sem ligação.', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 }
 
 self.addEventListener('fetch', (evento) => {
