@@ -1,0 +1,151 @@
+{% extends "livros/base.html" %}
+
+{% block titulo %}Os meus livros — Estante{% endblock %}
+
+{% block conteudo %}
+<section class="cabecalho">
+  <div>
+    <h1>Os meus livros</h1>
+    <p class="cabecalho__subtitulo">
+      {% if total_filtrado == 1 %}1 livro{% else %}{{ total_filtrado }} livros{% endif %}
+      {% if pesquisa or estado_ativo or avaliacao_ativa %} no resultado atual{% endif %}
+    </p>
+  </div>
+  <a class="botao botao--primario" href="{% url 'livros:criar' %}">+ Novo livro</a>
+</section>
+
+<section class="resumo" aria-label="Resumo das leituras">
+  <div class="resumo__item">
+    <span class="resumo__valor">{{ resumo.total }}</span>
+    <span class="resumo__etiqueta">livros registados</span>
+  </div>
+  <div class="resumo__item">
+    <span class="resumo__valor">{{ resumo.lidos }}</span>
+    <span class="resumo__etiqueta">lidos</span>
+  </div>
+  <div class="resumo__item">
+    <span class="resumo__valor">{{ resumo.este_ano }}</span>
+    <span class="resumo__etiqueta">este ano</span>
+  </div>
+  <div class="resumo__item">
+    <span class="resumo__valor">{% if resumo.media %}{{ resumo.media }}<small>/5</small>{% else %}—{% endif %}</span>
+    <span class="resumo__etiqueta">avaliação média</span>
+  </div>
+  <div class="resumo__item">
+    <span class="resumo__valor">{{ resumo.a_ler }}</span>
+    <span class="resumo__etiqueta">a ler</span>
+  </div>
+</section>
+
+<form class="filtros" method="get" action="{% url 'livros:lista' %}" role="search">
+  <div class="campo campo--pesquisa">
+    <label class="visualmente-oculto" for="id_q">Pesquisar</label>
+    <input type="search" id="id_q" name="q" value="{{ pesquisa }}" placeholder="Pesquisar por título, autor, nota…" autocomplete="off">
+  </div>
+
+  <div class="campo">
+    <label class="visualmente-oculto" for="id_estado">Estado</label>
+    <select id="id_estado" name="estado">
+      <option value="">Todos os estados</option>
+      {% for valor, etiqueta in estados %}
+        <option value="{{ valor }}" {% if estado_ativo == valor %}selected{% endif %}>{{ etiqueta }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="campo">
+    <label class="visualmente-oculto" for="id_avaliacao">Avaliação</label>
+    <select id="id_avaliacao" name="avaliacao">
+      <option value="">Qualquer avaliação</option>
+      {% for numero in "12345" %}
+        <option value="{{ numero }}" {% if avaliacao_ativa == numero %}selected{% endif %}>{{ numero }} estrela{{ numero|pluralize:"s" }}</option>
+      {% endfor %}
+      <option value="sem" {% if avaliacao_ativa == "sem" %}selected{% endif %}>Sem avaliação</option>
+    </select>
+  </div>
+
+  <div class="campo">
+    <label class="visualmente-oculto" for="id_order">Ordenar</label>
+    <select id="id_order" name="order">
+      {% for opcao in ordens %}
+        <option value="{{ opcao.chave }}" {% if ordem_ativa == opcao.chave %}selected{% endif %}>{{ opcao.etiqueta }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="filtros__acoes">
+    <button type="submit" class="botao botao--secundario">Filtrar</button>
+    {% if pesquisa or estado_ativo or avaliacao_ativa or ordem_ativa != "recentes" %}
+      <a class="botao botao--limpo" href="{% url 'livros:lista' %}">Limpar</a>
+    {% endif %}
+  </div>
+</form>
+
+{% if livros %}
+  <ul class="grelha">
+    {% for livro in livros %}
+      <li class="cartao livro livro--{{ livro.estado }}">
+        <div class="livro__topo">
+          <span class="etiqueta etiqueta--{{ livro.estado }}">{{ livro.get_estado_display }}</span>
+          {% if livro.avaliacao %}
+            <span class="estrelas-texto" title="{{ livro.avaliacao }} de 5" aria-label="Avaliação {{ livro.avaliacao }} de 5">{{ livro.estrelas }}</span>
+          {% endif %}
+        </div>
+
+        <h2 class="livro__titulo"><a href="{% url 'livros:detalhe' livro.pk %}">{{ livro.titulo }}</a></h2>
+        <p class="livro__autor">{{ livro.autor }}</p>
+
+        <dl class="livro__meta">
+          <div>
+            <dt>Leitura</dt>
+            <dd>{% if livro.data_leitura %}{{ livro.data_leitura|date:"d/m/Y" }}{% else %}—{% endif %}</dd>
+          </div>
+          <div>
+            <dt>Notas</dt>
+            <dd>{{ livro.total_notas }}</dd>
+          </div>
+          <div>
+            <dt>URLs</dt>
+            <dd>{{ livro.total_urls }}</dd>
+          </div>
+        </dl>
+
+        <div class="livro__acoes">
+          <a class="botao botao--secundario botao--pequeno" href="{% url 'livros:detalhe' livro.pk %}">Abrir</a>
+          <a class="botao botao--limpo botao--pequeno" href="{% url 'livros:editar' livro.pk %}">Editar</a>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% if is_paginated %}
+    <nav class="paginacao" aria-label="Paginação">
+      {% if page_obj.has_previous %}
+        <a class="botao botao--secundario botao--pequeno" href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">← Anterior</a>
+      {% else %}
+        <span class="botao botao--secundario botao--pequeno botao--inativo">← Anterior</span>
+      {% endif %}
+
+      <span class="paginacao__estado">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
+
+      {% if page_obj.has_next %}
+        <a class="botao botao--secundario botao--pequeno" href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Seguinte →</a>
+      {% else %}
+        <span class="botao botao--secundario botao--pequeno botao--inativo">Seguinte →</span>
+      {% endif %}
+    </nav>
+  {% endif %}
+{% else %}
+  <div class="vazio">
+    {% if pesquisa or estado_ativo or avaliacao_ativa %}
+      <h2>Sem resultados</h2>
+      <p>Não há livros que correspondam a estes filtros.</p>
+      <a class="botao botao--secundario" href="{% url 'livros:lista' %}">Limpar filtros</a>
+    {% else %}
+      <h2>A estante está vazia</h2>
+      <p>Começa por registar o primeiro livro que acabaste de ler.</p>
+      <a class="botao botao--primario" href="{% url 'livros:criar' %}">+ Registar o primeiro livro</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

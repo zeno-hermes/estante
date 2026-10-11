@@ -1,0 +1,28 @@
+{% extends "livros/base.html" %}
+
+{% block titulo %}Apagar livro — Estante{% endblock %}
+
+{% block conteudo %}
+<nav class="migalhas" aria-label="Contexto">
+  <a href="{% url 'livros:detalhe' livro.pk %}">← Voltar ao livro</a>
+</nav>
+
+<section class="cartao confirmar">
+  <h1>Apagar «{{ livro.titulo }}»?</h1>
+  <p>Esta ação é definitiva. As notas e os URLs associados a este livro também são apagados.</p>
+
+  <ul class="confirmar__detalhes">
+    <li><strong>Autor:</strong> {{ livro.autor }}</li>
+    <li><strong>Data de leitura:</strong> {% if livro.data_leitura %}{{ livro.data_leitura|date:"d/m/Y" }}{% else %}—{% endif %}</li>
+    <li><strong>Notas:</strong> {{ livro.notas.count }} · <strong>URLs:</strong> {{ livro.urls.count }}</li>
+  </ul>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="formulario__acoes">
+      <button type="submit" class="botao botao--perigo">Apagar definitivamente</button>
+      <a class="botao botao--limpo" href="{% url 'livros:detalhe' livro.pk %}">Cancelar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

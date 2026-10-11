@@ -1,17 +1,29 @@
 """Rotas do projeto Estante.
 
-- /entrar/ e /sair/: autenticação (fase 1)
-- /livros/: site desktop (fase 1) — URLs e notas na fase 2
+- /: encaminha para a lista (ou para o login, se anónimo)
+- /entrar/ e /sair/: autenticação (registo público desligado)
+- /livros/: site desktop
 - /pwa/: aplicação mobile instalável (fase 3)
 - /saude/: healthcheck público (deploy e monitorização)
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.contrib.auth import views as auth_views
+from django.urls import include, path
 
-from .views import saude
+from .views import home, saude
 
 urlpatterns = [
+    path("", home, name="home"),
+    path(
+        "entrar/",
+        auth_views.LoginView.as_view(
+            template_name="livros/entrar.html", redirect_authenticated_user=True
+        ),
+        name="entrar",
+    ),
+    path("sair/", auth_views.LogoutView.as_view(), name="sair"),
+    path("livros/", include("livros.urls")),
     path("admin/", admin.site.urls),
     path("saude/", saude, name="saude"),
 ]

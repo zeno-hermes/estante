@@ -1,0 +1,58 @@
+{% load static %}<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Estante{% endblock %}</title>
+  <meta name="description" content="Registo pessoal dos livros lidos.">
+  <link rel="stylesheet" href="{% static 'css/estante.css' %}">
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+</head>
+<body>
+  <a class="saltar" href="#conteudo">Saltar para o conteúdo</a>
+
+  <header class="topbar">
+    <div class="envelope topbar__interior">
+      <a class="marca" href="{% url 'livros:lista' %}">
+        <svg class="marca__icone" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M4 3.5h6a2.5 2.5 0 0 1 2 2.5v14a2.5 2.5 0 0 0-2-1.5H4z" fill="currentColor"/>
+          <path d="M20 3.5h-6a2.5 2.5 0 0 0-2 2.5v14a2.5 2.5 0 0 1 2-1.5h6z" fill="currentColor" opacity=".55"/>
+        </svg>
+        <span>Estante</span>
+      </a>
+
+      {% if user.is_authenticated %}
+        <nav class="topbar__nav" aria-label="Navegação principal">
+          <a href="{% url 'livros:lista' %}" {% if request.resolver_match.url_name == 'lista' %}aria-current="page"{% endif %}>Livros</a>
+          <a class="botao botao--primario botao--pequeno" href="{% url 'livros:criar' %}">+ Novo livro</a>
+        </nav>
+        <div class="topbar__utilizador">
+          <span class="topbar__nome" title="{{ user.get_username }}">{{ user.get_username }}</span>
+          <form method="post" action="{% url 'sair' %}">
+            {% csrf_token %}
+            <button type="submit" class="botao botao--limpo botao--pequeno">Sair</button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="envelope pagina" id="conteudo">
+    {% if messages %}
+      <ul class="mensagens">
+        {% for mensagem in messages %}
+          <li class="mensagem mensagem--{{ mensagem.tags }}">{{ mensagem }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% block conteudo %}{% endblock %}
+  </main>
+
+  <footer class="rodape">
+    <div class="envelope rodape__interior">
+      <span>Estante — registo pessoal de leituras</span>
+    </div>
+  </footer>
+</body>
+</html>

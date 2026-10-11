@@ -1,0 +1,81 @@
+{% extends "livros/base.html" %}
+
+{% block titulo %}{{ livro.titulo }} — Estante{% endblock %}
+
+{% block conteudo %}
+<nav class="migalhas" aria-label="Contexto">
+  <a href="{% url 'livros:lista' %}">← Os meus livros</a>
+</nav>
+
+<article class="cartao ficha">
+  <header class="ficha__cabecalho">
+    <div>
+      <span class="etiqueta etiqueta--{{ livro.estado }}">{{ livro.get_estado_display }}</span>
+      <h1 class="ficha__titulo">{{ livro.titulo }}</h1>
+      <p class="ficha__autor">{{ livro.autor }}</p>
+    </div>
+    {% if livro.avaliacao %}
+      <div class="ficha__avaliacao">
+        <span class="estrelas-texto estrelas-texto--grande">{{ livro.estrelas }}</span>
+        <span class="ficha__avaliacao-valor">{{ livro.avaliacao }}/5</span>
+      </div>
+    {% endif %}
+  </header>
+
+  <dl class="ficha__dados">
+    <div>
+      <dt>Data de leitura</dt>
+      <dd>{% if livro.data_leitura %}{{ livro.data_leitura|date:"d/m/Y" }}{% else %}por terminar{% endif %}</dd>
+    </div>
+    <div>
+      <dt>Estado</dt>
+      <dd>{{ livro.get_estado_display }}</dd>
+    </div>
+    <div>
+      <dt>Registado em</dt>
+      <dd>{{ livro.criado_em|date:"d/m/Y H:i" }}</dd>
+    </div>
+    <div>
+      <dt>Última alteração</dt>
+      <dd>{{ livro.atualizado_em|date:"d/m/Y H:i" }}</dd>
+    </div>
+  </dl>
+
+  <section class="bloco">
+    <h2 class="bloco__titulo">URLs <span class="contador">{{ livro.urls.count }}</span></h2>
+    {% if livro.urls.all %}
+      <ul class="lista-simples">
+        {% for link in livro.urls.all %}
+          <li>
+            <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.descricao|default:link.url }}</a>
+            {% if link.descricao %}<span class="lista-simples__secundario">{{ link.url }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="vazio-bloco">Ainda sem URLs. A gestão de URLs chega na fase 2.</p>
+    {% endif %}
+  </section>
+
+  <section class="bloco">
+    <h2 class="bloco__titulo">Notas <span class="contador">{{ livro.notas.count }}</span></h2>
+    {% if livro.notas.all %}
+      <ul class="notas">
+        {% for nota in livro.notas.all %}
+          <li class="nota">
+            <p class="nota__texto">{{ nota.texto|linebreaksbr }}</p>
+            <span class="nota__data">{{ nota.criado_em|date:"d/m/Y H:i" }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="vazio-bloco">Ainda sem notas. A gestão de notas chega na fase 2.</p>
+    {% endif %}
+  </section>
+
+  <footer class="ficha__acoes">
+    <a class="botao botao--secundario" href="{% url 'livros:editar' livro.pk %}">Editar</a>
+    <a class="botao botao--perigo" href="{% url 'livros:apagar' livro.pk %}">Apagar</a>
+  </footer>
+</article>
+{% endblock %}

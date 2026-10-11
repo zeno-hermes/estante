@@ -1,0 +1,37 @@
+{% extends "livros/base.html" %}
+
+{% block titulo %}Entrar — Estante{% endblock %}
+
+{% block conteudo %}
+<div class="entrega">
+  <section class="cartao entrar">
+    <h1 class="entrar__titulo">Entrar na Estante</h1>
+    <p class="entrar__subtitulo">A tua lista de livros, só tua.</p>
+
+    {% if form.non_field_errors %}
+      <div class="alerta alerta--erro" role="alert">
+        {% for erro in form.non_field_errors %}<p>{{ erro }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+      <div class="campo">
+        <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+        {{ form.username }}
+        {% if form.username.errors %}<p class="erro-campo">{{ form.username.errors.0 }}</p>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+        {{ form.password }}
+        {% if form.password.errors %}<p class="erro-campo">{{ form.password.errors.0 }}</p>{% endif %}
+      </div>
+
+      <button type="submit" class="botao botao--primario botao--largo">Entrar</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

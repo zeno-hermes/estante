@@ -1,0 +1,64 @@
+{% extends "livros/base.html" %}
+
+{% block titulo %}{{ titulo_pagina }} — Estante{% endblock %}
+
+{% block conteudo %}
+<nav class="migalhas" aria-label="Contexto">
+  <a href="{% url 'livros:lista' %}">← Os meus livros</a>
+</nav>
+
+<section class="cartao formulario">
+  <h1>{{ titulo_pagina }}</h1>
+
+  {% if form.non_field_errors %}
+    <div class="alerta alerta--erro" role="alert">
+      {% for erro in form.non_field_errors %}<p>{{ erro }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="campo">
+      <label for="{{ form.titulo.id_for_label }}">{{ form.titulo.label }} <span class="obrigatorio">*</span></label>
+      {{ form.titulo }}
+      {% if form.titulo.errors %}<p class="erro-campo">{{ form.titulo.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div class="campo">
+      <label for="{{ form.autor.id_for_label }}">{{ form.autor.label }} <span class="obrigatorio">*</span></label>
+      {{ form.autor }}
+      {% if form.autor.errors %}<p class="erro-campo">{{ form.autor.errors.0 }}</p>{% endif %}
+    </div>
+
+    <div class="campo-duplo">
+      <div class="campo">
+        <label for="{{ form.data_leitura.id_for_label }}">{{ form.data_leitura.label }}</label>
+        {{ form.data_leitura }}
+        {% if form.data_leitura.errors %}
+          <p class="erro-campo">{{ form.data_leitura.errors.0 }}</p>
+        {% else %}
+          <p class="ajuda">{{ form.data_leitura.help_text }}</p>
+        {% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.estado.id_for_label }}">{{ form.estado.label }}</label>
+        {{ form.estado }}
+        {% if form.estado.errors %}<p class="erro-campo">{{ form.estado.errors.0 }}</p>{% endif %}
+      </div>
+    </div>
+
+    <fieldset class="campo campo--estrelas">
+      <legend>{{ form.avaliacao.label }}</legend>
+      {{ form.avaliacao }}
+      {% if form.avaliacao.errors %}<p class="erro-campo">{{ form.avaliacao.errors.0 }}</p>{% endif %}
+    </fieldset>
+
+    <div class="formulario__acoes">
+      <button type="submit" class="botao botao--primario">{{ texto_botao }}</button>
+      <a class="botao botao--limpo" href="{% if form.instance.pk %}{% url 'livros:detalhe' form.instance.pk %}{% else %}{% url 'livros:lista' %}{% endif %}">Cancelar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
