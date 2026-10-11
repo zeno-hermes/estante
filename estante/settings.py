@@ -141,9 +141,6 @@ LOGIN_URL = "/entrar/"
 LOGIN_REDIRECT_URL = "/livros/"
 LOGOUT_REDIRECT_URL = "/entrar/"
 
-# Registo público desligado: as contas são criadas por scripts/create_admin.py.
-PERMITIR_REGISTO = env_bool("PERMITIR_REGISTO", False)
-
 # --------------------------------------------------------------------------
 # Internacionalização
 # --------------------------------------------------------------------------
@@ -173,12 +170,31 @@ STORAGES = {
 }
 
 # --------------------------------------------------------------------------
-# Email (consola em desenvolvimento)
+# Email
+#
+# A aplicação não envia email (as contas são criadas por scripts/create_admin.py),
+# mas em produção o Django recusa um backend de desenvolvimento (check mail.E001).
+# Fica SMTP configurável por .env; sem EMAIL_HOST aponta a localhost:25, que só é
+# usado se algum dia se ativar o "recuperar password" do admin.
 # --------------------------------------------------------------------------
 
-MAILERS = {
-    "default": {"BACKEND": "django.core.mail.backends.console.EmailBackend"},
-}
+if DEBUG:
+    MAILERS = {
+        "default": {"BACKEND": "django.core.mail.backends.console.EmailBackend"},
+    }
+else:
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+            "HOST": env("EMAIL_HOST", "localhost"),
+            "PORT": int(env("EMAIL_PORT") or "25"),
+            "USER": env("EMAIL_HOST_USER", ""),
+            "PASSWORD": env("EMAIL_HOST_PASSWORD", ""),
+            "USE_TLS": env_bool("EMAIL_USE_TLS", False),
+        }
+    }
+
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "estante@localhost")
 
 # --------------------------------------------------------------------------
 # Endurecimento em produção (HTTPS atrás de Nginx + Certbot)

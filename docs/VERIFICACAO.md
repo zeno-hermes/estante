@@ -248,3 +248,76 @@ confirmado ao forçar `registration.update()` e ver a cache antiga desaparecer n
   principal»; não foi testado em iOS.
 - **Leitor de ecrã / acessibilidade medida**: não testado com ferramenta.
 - **PWA em produção**: nada disto corre ainda fora desta máquina.
+
+## Fase 4 — Verificação final e documentação (2026-10-11)
+
+### Suite completa
+
+`manage.py test` → **120/120 `OK`** (0,9 s por teste em média; suite ~65 s).
+
+### `manage.py check --deploy` (defeito real encontrado e corrigido)
+
+Com `DEBUG=false` o Django recusou o arranque: **`mail.E001`** — backend de email de
+desenvolvimento (`console`) em produção. Não era um aviso teórico: o Django considera
+`console`, `dummy`, `filebased` e `locmem` backends de desenvolvimento. Corrigido:
+
+- `DEBUG=true` → `console` (vê-se o email no terminal, como se quer em desenvolvimento);
+- `DEBUG=false` → **SMTP** configurável por `.env` (`EMAIL_HOST`, `EMAIL_PORT`,
+  `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`), documentado em `.env.example`.
+
+Depois da correção: `System check identified no issues (0 silenced)`.
+
+Também removi `PERMITIR_REGISTO` do `settings.py` e do `.env.example`: era configuração
+morta, já que não existe rota de registo nenhuma (só `scripts/create_admin.py` cria contas).
+
+### Aplicação em modo produção, com pedidos HTTP reais
+
+Servidor a correr na porta 8001 com `DEBUG=false`, `ALLOWED_HOSTS=127.0.0.1,localhost` e
+`SECURE_PROXY_SSL_HEADER` (a simular o Nginx com `X-Forwarded-Proto: https`):
+
+| Verificação | Resultado observado |
+|---|---|
+| HTTP simples | `301` → `https://127.0.0.1:8001/saude/` |
+| Atrás do proxy | `200`, `application/json` |
+| Cabeçalhos de segurança | `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` |
+| Página privada sem sessão | `302` → `/entrar/?next=/livros/` |
+| Estáticos (WhiteNoise + manifest) | HTML referencia `estante.25f81d45728e.css` → `200`, `text/css`, 19 159 bytes |
+| Compressão | com `Accept-Encoding: gzip` → **4 527 bytes** (era 19 159) |
+| Estático inexistente | `404` |
+| `collectstatic` | 138 ficheiros copiados, 406 pós-processados (`.gz` + hash no nome) |
+| `MAILERS` em produção | `smtp.EmailBackend` |
+| `STORAGES` de estáticos | `CompressedManifestStaticFilesStorage` |
+
+### Backup e restauro (testados)
+
+```bash
+sqlite3 db.sqlite3 ".backup '…/estante-backup.sqlite3'"   # com a app a correr
+cp estante-backup.sqlite3 restaurado.sqlite3
+```
+
+Comparação tabela a tabela entre a base de dados viva e o restauro: **14 tabelas, contagens
+iguais** (`auth_user` 2, `django_session` 10, `livros_livro` 9, `livros_linklivro` 3,
+`livros_notalivro` 7), e `PRAGMA integrity_check` → `ok` nos dois ficheiros.
+
+### Segredos e repositório
+
+| Verificação | Resultado |
+|---|---|
+| Valor da `SECRET_KEY` em ficheiros versionados | não aparece em nenhum (`git grep` do valor real) |
+| `.env` | ignorado (`git check-ignore` → `.gitignore:6`) |
+| Ficheiros de dados versionados (`*.sqlite3`, `.env`) | nenhum |
+| Tokens GitHub no ambiente ou em ficheiros | nenhum |
+
+### Acesso ao GitHub
+
+- SSH a funcionar: `ssh -T git@github-zeno` → `Hi zeno-hermes! You've successfully authenticated…`
+- `gh` **não está autenticado**, não há token no ambiente, no `~/.git-credentials` nem em
+  `~/.config/gh/`, e o browser controlado não tem sessão GitHub iniciada (aparece «Sign in»).
+- **Falta**: criar o repositório privado vazio `estante` na conta `zeno-hermes`. Depois disso
+  o push é imediato (o remoto fica configurado para
+  `git@github-zeno:zeno-hermes/estante.git`).
+
+### Ainda por verificar
+
+- Push e repositório no GitHub (bloqueado no ponto acima).
+- Fase 5: tudo o que é da VM Oracle, HTTPS, DuckDNS, systemd, Nginx e Certbot.
