@@ -111,12 +111,15 @@ WSGI_APPLICATION = "estante.wsgi.application"
 
 # --------------------------------------------------------------------------
 # Base de dados
+#
+# Em produção o ficheiro fica FORA do checkout Git (DB_PATH), senão o
+# `git reset --hard` do deploy mexe-lhe. Em desenvolvimento fica na raiz.
 # --------------------------------------------------------------------------
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": env("DB_PATH") or BASE_DIR / "db.sqlite3",
         "OPTIONS": {
             "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
             "transaction_mode": "IMMEDIATE",
@@ -156,7 +159,8 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
+# Em produção aponta para fora do checkout (ver STATIC_ROOT_DIR no .env.example).
+STATIC_ROOT = env("STATIC_ROOT_DIR") or BASE_DIR / "staticfiles"
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
