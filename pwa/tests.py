@@ -202,6 +202,91 @@ class ListaMobileTests(BasePWA):
         self.assertEqual(len(segunda.context["livros"]), 7)
         self.assertContains(segunda, "2 / 2")
 
+    def test_cartao_e_compacto_numa_linha_por_livro(self):
+        """Cartão compacto: título + uma linha de detalhe; sem o cartão alto."""
+        resposta = self.client.get(reverse("pwa:lista"))
+        html = resposta.content.decode()
+        self.assertEqual(html.count('class="livro__principal"'), 2)
+        self.assertEqual(html.count('class="livro__sub"'), 2)
+        # o cartão alto (linha de topo, rodapé e pílulas) desapareceu da lista
+        self.assertNotIn("livro__linha1", html)
+        self.assertNotIn("livro__rodape", html)
+        # o estado e a data continuam visíveis sem ocupar uma linha cada
+        self.assertContains(resposta, "Em curso")  # etiqueta do estado
+        self.assertContains(resposta, "01/06/2025")
+
+    def test_estado_planeado_aparece_no_chip_de_filtro(self):
+        self.criar_livro(
+            titulo="Planeado para o inverno",
+            autor="Alguém",
+            data_leitura=None,
+            avaliacao=None,
+            estado=Livro.Estado.PLANEADO,
+        )
+        resposta = self.client.get(reverse("pwa:lista"))
+        self.assertContains(resposta, "planeado")
+        self.assertContains(resposta, "Planeado para o inverno")
+
+        filtrado = self.client.get(reverse("pwa:lista"), {"estado": "planeado"})
+        self.assertContains(filtrado, "Planeado para o inverno")
+        self.assertNotContains(filtrado, "Dune")
+
+
+class ConviteAInstalarTests(BasePWA):
+    """O convite a instalar só pode aparecer a quem ainda não tem a app."""
+
+    def test_convite_esta_escondido_no_html(self):
+        self.entrar()
+        resposta = self.client.get(reverse("pwa:lista"))
+        html = resposta.content.decode()
+        self.assertIn('id="aviso-instalar"', html)
+        self.assertIn('id="aviso-instalar" hidden', html)
+
+    def test_convite_tem_como_dizer_agora_nao(self):
+        self.entrar()
+        resposta = self.client.get(reverse("pwa:lista"))
+        self.assertContains(resposta, 'id="botao-dispensar-instalar"')
+
+    def test_js_nao_volta_a_convite_depois_de_instalada(self):
+        from pathlib import Path
+
+        from django.contrib.staticfiles import finders
+
+        caminho = finders.find("pwa/pwa.js")
+        self.assertIsNotNone(caminho, "pwa.js tem de existir nos estáticos")
+        js = Path(caminho).read_text(encoding="utf-8")
+        # sinais de app instalada: display-mode, iOS e o registo de instalação
+        self.assertIn("display-mode: ", js)
+        self.assertIn("navigator.standalone", js)
+        self.assertIn("estante:instalada", js)
+        self.assertIn("estante:instalar-dispensado", js)
+        self.assertIn("appinstalled", js)
+
+    def test_css_esconde_o_convite_quando_corre_como_app(self):
+        from pathlib import Path
+
+        from django.contrib.staticfiles import finders
+
+        caminho = finders.find("pwa/pwa.css")
+        self.assertIsNotNone(caminho, "pwa.css tem de existir nos estáticos")
+        css = Path(caminho).read_text(encoding="utf-8")
+        self.assertIn("@media (display-mode: standalone)", css)
+        self.assertIn(".aviso-instalar { display: none !important; }", css)
+
+    def test_css_deixa_o_atributo_hidden_esconder_o_convite(self):
+        """Sem `[hidden] { display: none !important }` o convite aparece sempre.
+
+        `hidden` é só um atributo: a regra do browser que o esconde
+        (`[hidden] { display: none }`) perde para `.aviso-instalar { display: flex }`
+        e o convite fica visível mesmo depois de a app estar instalada.
+        """
+        from pathlib import Path
+
+        from django.contrib.staticfiles import finders
+
+        css = Path(finders.find("pwa/pwa.css")).read_text(encoding="utf-8")
+        self.assertIn("[hidden] { display: none !important; }", css)
+
 
 class EscritaMobileTests(BasePWA):
     def setUp(self):

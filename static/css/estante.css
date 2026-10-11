@@ -19,6 +19,8 @@
   --cor-lido-suave: #e7f5ec;
   --cor-abandonado: #78716c;
   --cor-abandonado-suave: #f1efec;
+  --cor-planeado: #6d3bd4;
+  --cor-planeado-suave: #f2ecfe;
   --cor-estrela: #c8891b;
 
   --raio: 12px;
@@ -149,7 +151,7 @@ a:hover { color: var(--cor-primaria-escura); }
 /* -------------------------------------------------------------- resumo */
 
 .resumo {
-  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.75rem; margin-bottom: 1.5rem;
 }
 .resumo__item {
@@ -190,6 +192,7 @@ a:hover { color: var(--cor-primaria-escura); }
 .livro--lido { border-left-color: var(--cor-lido); }
 .livro--a_ler { border-left-color: var(--cor-a-ler); }
 .livro--abandonado { border-left-color: var(--cor-abandonado); }
+.livro--planeado { border-left-color: var(--cor-planeado); }
 
 .livro__topo { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0; }
 .livro__titulo { font-size: 1.05rem; margin: 0; overflow-wrap: anywhere; }
@@ -216,6 +219,7 @@ a:hover { color: var(--cor-primaria-escura); }
 .etiqueta--lido { background: var(--cor-lido-suave); color: var(--cor-lido); }
 .etiqueta--a_ler { background: var(--cor-a-ler-suave); color: var(--cor-a-ler); }
 .etiqueta--abandonado { background: var(--cor-abandonado-suave); color: var(--cor-abandonado); }
+.etiqueta--planeado { background: var(--cor-planeado-suave); color: var(--cor-planeado); }
 
 .estrelas-texto { color: var(--cor-estrela); letter-spacing: 0.08em; font-size: 0.95rem; }
 .estrelas-texto--grande { font-size: 1.5rem; }
@@ -449,6 +453,79 @@ input:focus, select:focus, textarea:focus {
   .grelha { grid-template-columns: 1fr; }
 }
 
+/* ------------------------------------------------- lista em linhas (tabela) */
+
+.barra-lista { display: flex; justify-content: flex-end; margin: 0 0 0.75rem; }
+
+.vistas {
+  display: inline-flex; overflow: hidden;
+  border: 1px solid var(--cor-borda-forte); border-radius: 999px;
+  background: var(--cor-superficie);
+}
+.vista {
+  padding: 0.32rem 0.9rem; font-size: 0.85rem; text-decoration: none;
+  color: var(--cor-texto-suave);
+}
+.vista + .vista { border-left: 1px solid var(--cor-borda); }
+.vista:hover { color: var(--cor-texto); background: var(--cor-superficie-2); }
+.vista--ativa { background: var(--cor-primaria); color: #fff; font-weight: 600; }
+
+.tabela__rolar { overflow-x: auto; }
+
+.tabela {
+  width: 100%; min-width: 660px; border-collapse: collapse; table-layout: fixed;
+  background: var(--cor-superficie); border: 1px solid var(--cor-borda);
+  border-radius: var(--raio); overflow: hidden; box-shadow: var(--sombra);
+}
+.tabela__col-titulo { width: 30%; }
+.tabela__col-autor { width: 19%; }
+.tabela__col-estado { width: 11%; }
+.tabela__col-data { width: 11%; }
+.tabela__col-estrelas { width: 11%; }
+.tabela__col-contadores { width: 10%; }
+.tabela__col-acoes { width: 8%; }
+
+.tabela thead th {
+  padding: 0.6rem 0.75rem; text-align: left; font-weight: 600;
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--cor-texto-suave); background: var(--cor-superficie-2);
+  border-bottom: 1px solid var(--cor-borda);
+}
+.tabela td { padding: 0.58rem 0.75rem; border-bottom: 1px solid var(--cor-borda); }
+.tabela tbody tr:last-child td { border-bottom: 0; }
+.tabela tbody tr:hover { background: var(--cor-superficie-2); }
+
+/* Barra de estado na primeira célula: `box-shadow` porque `border-left` numa
+   `<tr>` não é fiável com `border-collapse: collapse`. */
+.tabela__titulo { padding-left: 0.9rem; }
+.tabela__linha--lido .tabela__titulo { box-shadow: inset 4px 0 0 var(--cor-lido); }
+.tabela__linha--a_ler .tabela__titulo { box-shadow: inset 4px 0 0 var(--cor-a-ler); }
+.tabela__linha--abandonado .tabela__titulo { box-shadow: inset 4px 0 0 var(--cor-abandonado); }
+.tabela__linha--planeado .tabela__titulo { box-shadow: inset 4px 0 0 var(--cor-planeado); }
+
+/* Título e autor numa linha só, com reticências (precisa de `table-layout: fixed`). */
+.tabela__titulo, .tabela__autor, .tabela__contadores {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tabela__titulo a { color: var(--cor-texto); font-weight: 550; text-decoration: none; }
+.tabela__titulo a:hover { color: var(--cor-primaria); text-decoration: underline; }
+.tabela__autor { color: var(--cor-texto-suave); }
+.tabela__numero, .tabela__contadores { font-variant-numeric: tabular-nums; }
+.tabela__numero { white-space: nowrap; }
+.tabela__estrelas .estrelas-texto { font-size: 0.9rem; letter-spacing: 0.04em; }
+.tabela__vazio { color: var(--cor-borda-forte); }
+.tabela__acoes { text-align: right; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .barra-lista { justify-content: stretch; }
+  .vistas { width: 100%; }
+  .vista { flex: 1; text-align: center; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* `hidden` (atributo de HTML) tem de ganhar às regras de `display` desta folha:
+   a regra do browser que o esconde tem menos especificidade do que uma classe. */
+[hidden] { display: none !important; }

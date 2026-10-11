@@ -68,6 +68,20 @@ class LivroModelTests(TestCase):
     def test_estado_por_omissao_e_lido(self):
         self.assertEqual(self.criar().estado, Livro.Estado.LIDO)
 
+    def test_estado_planeado_para_o_que_ainda_nao_comecei(self):
+        """«Planeado» é um estado próprio e anda sem data de leitura."""
+        livro = self.criar(
+            titulo="A ler em breve",
+            autor="Alguém",
+            data_leitura=None,
+            estado=Livro.Estado.PLANEADO,
+        )
+        livro.refresh_from_db()
+        self.assertEqual(livro.estado, "planeado")
+        self.assertEqual(livro.get_estado_display(), "Planeado")
+        self.assertIsNone(livro.data_leitura)
+        self.assertEqual([valor for valor, _ in Livro.Estado.choices].count("planeado"), 1)
+
     def test_estrelas_representa_a_avaliacao(self):
         self.assertEqual(self.criar(avaliacao=3).estrelas, "★★★☆☆")
         self.assertEqual(self.criar(titulo="Outro", avaliacao=None).estrelas, "☆☆☆☆☆")

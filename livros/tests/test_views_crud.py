@@ -12,11 +12,14 @@ from livros.models import LinkLivro, Livro, NotaLivro
 
 PASSWORD = "uma-password-de-teste-1234"
 MARCADOR_CARTAO = 'class="cartao livro'
+# A lista tem duas formas: uma linha por livro (tabela, por omissão) ou cartões.
+# A contagem tem de valer nas duas, senão os testes passam a medir o layout.
+MARCADOR_LINHA = 'class="tabela__linha'
 
 
 def contas_no_html(html):
-    """Conta cartões de livro no HTML renderizado (evidência do que o browser vê)."""
-    return html.count(MARCADOR_CARTAO)
+    """Conta os livros apresentados no HTML (evidência do que o browser vê)."""
+    return html.count(MARCADOR_CARTAO) + html.count(MARCADOR_LINHA)
 
 
 class BaseComUtilizador(TestCase):
@@ -314,6 +317,63 @@ class ListaEFiltrosTests(BaseComUtilizador):
         self.assertNotContains(resposta, "Livro do intruso")
         # o que está no HTML tem de ser igual ao que existe na BD para este utilizador
         self.assertEqual(contas_no_html(resposta.content.decode()), Livro.objects.filter(utilizador=self.utilizador).count())
+
+    def test_lista_em_linhas_por_omissao(self):
+        """Uma linha por livro (tabela) é a apresentação de omissão."""
+        resposta = self.client.get(reverse("livros:lista"))
+        self.assertEqual(resposta.context["vista"], "lista")
+        self.assertContains(resposta, 'class="tabela"')
+        self.assertEqual(resposta.content.decode().count(MARCADOR_CARTAO), 0)
+        self.assertContains(resposta, "Leitura")  # cabeçalho das colunas
+
+    def test_vista_em_cartoes_pelo_parametro(self):
+        resposta = self.client.get(reverse("livros:lista"), {"vista": "cartoes"})
+        self.assertEqual(resposta.context["vista"], "cartoes")
+        self.assertContains(resposta, MARCADOR_CARTAO)
+        self.assertEqual(resposta.content.decode().count(MARCADOR_LINHA), 0)
+
+    def test_vista_escolhida_fica_guardada_no_cookie(self):
+        """Escolher cartões vale para as visitas seguintes (e para a paginação)."""
+        primeira = self.client.get(reverse("livros:lista"), {"vista": "cartoes"})
+        self.assertEqual(primeira.cookies["estante_vista"].value, "cartoes")
+
+        seguinte = self.client.get(reverse("livros:lista"))
+        self.assertEqual(seguinte.context["vista"], "cartoes")
+        self.assertContains(seguinte, MARCADOR_CARTAO)
+
+        # e volta atrás sem ficar preso
+        terceira = self.client.get(reverse("livros:lista"), {"vista": "lista"})
+        self.assertEqual(terceira.context["vista"], "lista")
+        self.assertEqual(terceira.cookies["estante_vista"].value, "lista")
+
+    def test_vista_invalida_cai_na_omissao(self):
+        resposta = self.client.get(reverse("livros:lista"), {"vista": "diagonal"})
+        self.assertEqual(resposta.context["vista"], "lista")
+
+    def test_links_da_vista_nao_perdem_os_filtros(self):
+        resposta = self.client.get(reverse("livros:lista"), {"q": "dune", "order": "titulo"})
+        cartoes = [v for v in resposta.context["vistas"] if v["chave"] == "cartoes"][0]
+        self.assertIn("vista=cartoes", cartoes["url"])
+        self.assertIn("q=dune", cartoes["url"])
+        self.assertIn("order=titulo", cartoes["url"])
+        self.assertNotIn("vista=", cartoes["url"].replace("vista=cartoes", ""))
+
+    def test_estado_planeado_existe_nos_filtros_e_conta_no_resumo(self):
+        planeado = self.criar_livro(
+            titulo="Para ler em breve",
+            autor="Autor Futuro",
+            data_leitura=None,
+            estado=Livro.Estado.PLANEADO,
+            avaliacao=None,
+        )
+        resposta = self.client.get(reverse("livros:lista"))
+        self.assertEqual(resposta.context["resumo"]["planeados"], 1)
+        self.assertContains(resposta, "Planeado")
+        self.assertContains(resposta, planeado.titulo)
+
+        filtrado = self.client.get(reverse("livros:lista"), {"estado": "planeado"})
+        self.assertEqual(contas_no_html(filtrado.content.decode()), 1)
+        self.assertContains(filtrado, planeado.titulo)
 
     def test_pesquisa_por_titulo_e_autor(self):
         por_titulo = self.client.get(reverse("livros:lista"), {"q": "dune"})

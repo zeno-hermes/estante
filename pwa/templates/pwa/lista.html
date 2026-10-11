@@ -25,18 +25,18 @@
     {% for livro in livros %}
       <li>
         <a class="cartao livro livro--{{ livro.estado }}" href="{% url 'pwa:detalhe' livro.pk %}">
-          <span class="livro__linha1">
-            <span class="etiqueta etiqueta--{{ livro.estado }}">{{ livro.get_estado_display }}</span>
-            {% if livro.avaliacao %}<span class="estrelas">{{ livro.estrelas }}</span>{% endif %}
-          </span>
-          <span class="livro__titulo">{{ livro.titulo }}</span>
-          <span class="livro__autor">{{ livro.autor }}</span>
-          <span class="livro__rodape">
-            <span>{% if livro.data_leitura %}{{ livro.data_leitura|date:"d/m/Y" }}{% else %}por terminar{% endif %}</span>
-            <span class="livro__contadores">
-              {% if livro.total_notas %}<span class="pilula">{{ livro.total_notas }} nota{{ livro.total_notas|pluralize }}</span>{% endif %}
-              {% if livro.total_urls %}<span class="pilula">{{ livro.total_urls }} URL{{ livro.total_urls|pluralize }}</span>{% endif %}
+          <span class="livro__principal">
+            <span class="livro__titulo">{{ livro.titulo }}</span>
+            <span class="livro__sub">
+              <span class="livro__estado">{{ livro.get_estado_display }}</span>
+              · {{ livro.autor }}{% if livro.data_leitura %} · {{ livro.data_leitura|date:"d/m/Y" }}{% endif %}{% if livro.total_notas %} · {{ livro.total_notas }} nota{{ livro.total_notas|pluralize }}{% endif %}{% if livro.total_urls %} · {{ livro.total_urls }} URL{{ livro.total_urls|pluralize }}{% endif %}
             </span>
+          </span>
+          <span class="livro__fim">
+            {% if livro.avaliacao %}<span class="estrelas" aria-label="Avaliação {{ livro.avaliacao }} de 5">{{ livro.estrelas }}</span>{% endif %}
+            <svg class="livro__seta" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </span>
         </a>
       </li>

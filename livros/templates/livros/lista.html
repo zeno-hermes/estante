@@ -35,6 +35,10 @@
     <span class="resumo__valor">{{ resumo.a_ler }}</span>
     <span class="resumo__etiqueta">a ler</span>
   </div>
+  <div class="resumo__item">
+    <span class="resumo__valor">{{ resumo.planeados }}</span>
+    <span class="resumo__etiqueta">planeados</span>
+  </div>
 </section>
 
 <form class="filtros" method="get" action="{% url 'livros:lista' %}" role="search">
@@ -73,6 +77,8 @@
     </select>
   </div>
 
+  <input type="hidden" name="vista" value="{{ vista }}">
+
   <div class="filtros__acoes">
     <button type="submit" class="botao botao--secundario">Filtrar</button>
     {% if pesquisa or estado_ativo or avaliacao_ativa or ordem_ativa != "recentes" %}
@@ -81,42 +87,105 @@
   </div>
 </form>
 
-{% if livros %}
-  <ul class="grelha">
-    {% for livro in livros %}
-      <li class="cartao livro livro--{{ livro.estado }}">
-        <div class="livro__topo">
-          <span class="etiqueta etiqueta--{{ livro.estado }}">{{ livro.get_estado_display }}</span>
-          {% if livro.avaliacao %}
-            <span class="estrelas-texto" title="{{ livro.avaliacao }} de 5" aria-label="Avaliação {{ livro.avaliacao }} de 5">{{ livro.estrelas }}</span>
-          {% endif %}
-        </div>
-
-        <h2 class="livro__titulo"><a href="{% url 'livros:detalhe' livro.pk %}">{{ livro.titulo }}</a></h2>
-        <p class="livro__autor">{{ livro.autor }}</p>
-
-        <dl class="livro__meta">
-          <div>
-            <dt>Leitura</dt>
-            <dd>{% if livro.data_leitura %}{{ livro.data_leitura|date:"d/m/Y" }}{% else %}—{% endif %}</dd>
-          </div>
-          <div>
-            <dt>Notas</dt>
-            <dd>{{ livro.total_notas }}</dd>
-          </div>
-          <div>
-            <dt>URLs</dt>
-            <dd>{{ livro.total_urls }}</dd>
-          </div>
-        </dl>
-
-        <div class="livro__acoes">
-          <a class="botao botao--secundario botao--pequeno" href="{% url 'livros:detalhe' livro.pk %}">Abrir</a>
-          <a class="botao botao--limpo botao--pequeno" href="{% url 'livros:editar' livro.pk %}">Editar</a>
-        </div>
-      </li>
+<div class="barra-lista">
+  <div class="vistas" role="group" aria-label="Forma de apresentação">
+    {% for opcao in vistas %}
+      <a class="vista {% if opcao.ativa %}vista--ativa{% endif %}" href="{{ opcao.url }}"{% if opcao.ativa %} aria-current="true"{% endif %}>{{ opcao.etiqueta }}</a>
     {% endfor %}
-  </ul>
+  </div>
+</div>
+
+{% if livros %}
+  {% if vista == "cartoes" %}
+    <ul class="grelha">
+      {% for livro in livros %}
+        <li class="cartao livro livro--{{ livro.estado }}">
+          <div class="livro__topo">
+            <span class="etiqueta etiqueta--{{ livro.estado }}">{{ livro.get_estado_display }}</span>
+            {% if livro.avaliacao %}
+              <span class="estrelas-texto" title="{{ livro.avaliacao }} de 5" aria-label="Avaliação {{ livro.avaliacao }} de 5">{{ livro.estrelas }}</span>
+            {% endif %}
+          </div>
+
+          <h2 class="livro__titulo"><a href="{% url 'livros:detalhe' livro.pk %}">{{ livro.titulo }}</a></h2>
+          <p class="livro__autor">{{ livro.autor }}</p>
+
+          <dl class="livro__meta">
+            <div>
+              <dt>Leitura</dt>
+              <dd>{% if livro.data_leitura %}{{ livro.data_leitura|date:"d/m/Y" }}{% else %}—{% endif %}</dd>
+            </div>
+            <div>
+              <dt>Notas</dt>
+              <dd>{{ livro.total_notas }}</dd>
+            </div>
+            <div>
+              <dt>URLs</dt>
+              <dd>{{ livro.total_urls }}</dd>
+            </div>
+          </dl>
+
+          <div class="livro__acoes">
+            <a class="botao botao--secundario botao--pequeno" href="{% url 'livros:detalhe' livro.pk %}">Abrir</a>
+            <a class="botao botao--limpo botao--pequeno" href="{% url 'livros:editar' livro.pk %}">Editar</a>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="tabela__rolar">
+      <table class="tabela">
+      <caption class="visualmente-oculto">Livros registados, um por linha</caption>
+      <colgroup>
+        <col class="tabela__col-titulo">
+        <col class="tabela__col-autor">
+        <col class="tabela__col-estado">
+        <col class="tabela__col-data">
+        <col class="tabela__col-estrelas">
+        <col class="tabela__col-contadores">
+        <col class="tabela__col-acoes">
+      </colgroup>
+      <thead>
+        <tr>
+          <th scope="col">Título</th>
+          <th scope="col">Autor</th>
+          <th scope="col">Estado</th>
+          <th scope="col">Leitura</th>
+          <th scope="col">Avaliação</th>
+          <th scope="col">Notas / URLs</th>
+          <th scope="col"><span class="visualmente-oculto">Ações</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for livro in livros %}
+          <tr class="tabela__linha tabela__linha--{{ livro.estado }}">
+            <td class="tabela__titulo">
+              <a href="{% url 'livros:detalhe' livro.pk %}" title="{{ livro.titulo }}">{{ livro.titulo }}</a>
+            </td>
+            <td class="tabela__autor" title="{{ livro.autor }}">{{ livro.autor }}</td>
+            <td><span class="etiqueta etiqueta--{{ livro.estado }}">{{ livro.get_estado_display }}</span></td>
+            <td class="tabela__numero">
+              {% if livro.data_leitura %}{{ livro.data_leitura|date:"d/m/Y" }}{% else %}<span class="tabela__vazio">—</span>{% endif %}
+            </td>
+            <td class="tabela__estrelas">
+              {% if livro.avaliacao %}
+                <span class="estrelas-texto" title="{{ livro.avaliacao }} de 5" aria-label="Avaliação {{ livro.avaliacao }} de 5">{{ livro.estrelas }}</span>
+              {% else %}
+                <span class="tabela__vazio">—</span>
+              {% endif %}
+            </td>
+            <td class="tabela__numero tabela__contadores">
+              {{ livro.total_notas }} / {{ livro.total_urls }}
+            </td>
+            <td class="tabela__acoes">
+              <a class="botao botao--limpo botao--pequeno" href="{% url 'livros:editar' livro.pk %}">Editar</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      </table>
+    </div>
+  {% endif %}
 
   {% if is_paginated %}
     <nav class="paginacao" aria-label="Paginação">

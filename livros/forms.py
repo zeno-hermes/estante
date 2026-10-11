@@ -95,7 +95,7 @@ class LivroForm(forms.ModelForm):
             }
         ),
         help_text="Dia em que acabaste o livro, no formato dd/mm/aaaa "
-        "(deixa vazio enquanto estiveres a ler).",
+        "(deixa vazio se ainda o estás a ler ou se só o planeias ler).",
         error_messages={"invalid": "Escreve a data no formato dd/mm/aaaa (ex.: 14/08/2026)."},
     )
     avaliacao = EstrelasField(

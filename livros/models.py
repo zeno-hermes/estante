@@ -7,6 +7,7 @@ class Livro(models.Model):
     """Um livro lido (ou em leitura) pelo utilizador."""
 
     class Estado(models.TextChoices):
+        PLANEADO = "planeado", "Planeado"
         A_LER = "a_ler", "A ler"
         LIDO = "lido", "Lido"
         ABANDONADO = "abandonado", "Abandonado"
@@ -23,7 +24,8 @@ class Livro(models.Model):
         "data de leitura",
         null=True,
         blank=True,
-        help_text="Dia em que acabaste o livro (deixa vazio enquanto estiveres a ler).",
+        help_text="Dia em que acabaste o livro. Deixa vazio se ainda o estás a ler "
+        "ou se só o planeias ler.",
     )
     avaliacao = models.PositiveSmallIntegerField(
         "avaliação",

@@ -37,6 +37,11 @@ ORDEM_ETIQUETAS = {
     "avaliacao": "Melhor avaliados",
 }
 
+# Formas de apresentar a lista: uma linha por livro (por omissão) ou cartões.
+VISTAS = {"lista": "Lista", "cartoes": "Cartões"}
+VISTA_OMISSAO = "lista"
+COOKIE_VISTA = "estante_vista"
+
 
 class LivrosDoUtilizadorMixin(LoginRequiredMixin):
     """Base comum: restringe o queryset aos livros do utilizador autenticado."""
@@ -86,10 +91,33 @@ class LivroListView(LivrosDoUtilizadorMixin, ListView):
             .annotate(total_notas=Count("notas", distinct=True), total_urls=Count("urls", distinct=True))
         )
 
+    def get(self, request, *args, **kwargs):
+        """Guarda a forma de apresentação escolhida, para valer nas próximas visitas."""
+        resposta = super().get(request, *args, **kwargs)
+        escolhida = request.GET.get("vista")
+        if escolhida in VISTAS:
+            resposta.set_cookie(
+                COOKIE_VISTA,
+                escolhida,
+                max_age=60 * 60 * 24 * 365,
+                samesite="Lax",
+                httponly=True,
+            )
+        return resposta
+
+    def vista_ativa(self):
+        """Vista pedida no URL, senão a guardada no cookie, senão a de omissão."""
+        pedida = self.request.GET.get("vista")
+        if pedida in VISTAS:
+            return pedida
+        guardada = self.request.COOKIES.get(COOKIE_VISTA)
+        return guardada if guardada in VISTAS else VISTA_OMISSAO
+
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         parametros = self.request.GET
         ordem = parametros.get("order") if parametros.get("order") in ORDEM_MAPA else "recentes"
+        vista = self.vista_ativa()
 
         contexto["pesquisa"] = (parametros.get("q") or "").strip()
         contexto["estado_ativo"] = parametros.get("estado") or ""
@@ -101,6 +129,16 @@ class LivroListView(LivrosDoUtilizadorMixin, ListView):
             for chave, etiqueta in ORDEM_ETIQUETAS.items()
         ]
         contexto["querystring"] = self.querystring_sem("page")[1:]
+        contexto["vista"] = vista
+        contexto["vistas"] = [
+            {
+                "chave": chave,
+                "etiqueta": etiqueta,
+                "url": f"{self.querystring_sem('vista', 'page')}vista={chave}",
+                "ativa": chave == vista,
+            }
+            for chave, etiqueta in VISTAS.items()
+        ]
 
         # Contadores sobre TODOS os livros do utilizador (não apenas a página filtrada).
         todos = Livro.objects.filter(utilizador=self.request.user)
@@ -109,6 +147,7 @@ class LivroListView(LivrosDoUtilizadorMixin, ListView):
             "total": todos.count(),
             "lidos": todos.filter(estado=Livro.Estado.LIDO).count(),
             "a_ler": todos.filter(estado=Livro.Estado.A_LER).count(),
+            "planeados": todos.filter(estado=Livro.Estado.PLANEADO).count(),
             "abandonados": todos.filter(estado=Livro.Estado.ABANDONADO).count(),
             "media": round(agregados["media"], 1) if agregados["media"] else None,
             "este_ano": todos.filter(data_leitura__year=timezone.localdate().year).count(),

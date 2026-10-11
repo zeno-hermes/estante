@@ -448,3 +448,56 @@ Dois defeitos encontrados pelo caminho:
 
 Nada disto se vê em testes de HTML: só por medição no browser (`getBoundingClientRect`,
 `getComputedStyle`, `caches.match(...)`) e depois de forçar `registration.update()`.
+
+## Alterações de 11/10/2026 (segunda ronda)
+
+### 1. O convite a instalar aparecia sempre
+
+Duas causas, as duas no cliente:
+
+1. **`hidden` perdia para o CSS.** `.aviso-instalar { display: flex }` tem mais
+   especificidade do que a regra do browser `[hidden] { display: none }`, portanto o atributo
+   `hidden` do HTML não escondia nada: o convite estava visível desde o primeiro segundo,
+   mesmo depois de a app estar instalada, por muito que o JavaScript o «escondesse».
+   Corrigido com `[hidden] { display: none !important; }` nas duas folhas de estilo —
+   medido: `getComputedStyle(el).display` passou de `flex` para `none`.
+2. **As regras estavam ao contrário.** Passou a mostrar-se apenas quando há motivo:
+   `beforeinstallprompt` (que o Android só emite quando a app **não** está instalada) ou
+   instruções no iOS; e nunca quando `display-mode` indica app instalada, quando
+   `localStorage` diz que já foi instalada (`appinstalled` ou escolha aceite) ou quando o
+   utilizador carregou em **Agora não**.
+
+Verificado no browser: sem instalação e sem evento, o convite tem `display: none` e altura 0;
+com o evento, aparece (botão com 44 px de toque); «Agora não» grava a marca e o convite fica
+escondido mesmo com um novo evento; com a marca de instalada, não aparece. A regra
+`@media (display-mode: …)` foi confirmada pelo CSSOM (o CDP não emula `display-mode`, por
+isso essa parte está verificada por construção).
+
+### 2. Lista do site desktop: uma linha por livro
+
+Tabela com colunas Título, Autor, Estado, Leitura, Avaliação, Notas/URLs e Editar, barra de
+cor do estado na primeira célula, título/autor cortados com reticências (o texto inteiro fica
+no `title`). Medido a 1280x900: 8 linhas de 56 px, sem transbordo horizontal, ~12 livros por
+ecrã (antes ~4 cartões). Com um título de 95 caracteres: 959 px de texto numa célula de
+311 px → cortado com reticências e páginas sem transbordo.
+
+Mantêm-se os **cartões** como alternativa, com um selector Lista/Cartões (`?vista=`) cuja
+escolha fica guardada num cookie (`estante_vista`, 1 ano) — verificado: escolher Cartões,
+voltar sem parâmetro e a página continua em cartões.
+
+### 3. Cartões compactos no telemóvel
+
+Cartão passou de duas colunas de texto + rodapé (~120 px) para título numa linha e uma
+segunda linha com `Estado · autor · data · notas · URLs` cortada com reticências: **56 px de
+altura, 10 cartões por ecrã** (antes ~5), sem transbordo lateral a 390 px. O estado continua
+a distinguir-se pela cor da barra lateral e do texto.
+
+### 4. Estado «Planeado»
+
+Novo estado para livros que ainda não se começaram, sem data de leitura (a data já era
+opcional). Aparece na lista, no filtro por estado (chips no telemóvel, select no desktop) e
+no resumo do cabeçalho (bloco «planeados»). Verificado a gravar pela interface: livro
+guardado com «—» em leitura e avaliação, contador «2 planeados», etiqueta com a cor própria
+(`rgb(109, 59, 212)`) e filtro `?estado=planeado` a devolver só os planeados.
+
+147 testes verdes (14 novos).
