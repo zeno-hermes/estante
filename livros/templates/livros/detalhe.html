@@ -43,34 +43,79 @@
 
   <section class="bloco">
     <h2 class="bloco__titulo">URLs <span class="contador">{{ livro.urls.count }}</span></h2>
+
     {% if livro.urls.all %}
       <ul class="lista-simples">
         {% for link in livro.urls.all %}
-          <li>
-            <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.descricao|default:link.url }}</a>
-            {% if link.descricao %}<span class="lista-simples__secundario">{{ link.url }}</span>{% endif %}
+          <li class="item-relacao">
+            <div class="item-relacao__conteudo">
+              <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.descricao|default:link.url }}</a>
+              <span class="lista-simples__secundario">{{ link.url }}</span>
+            </div>
+            <form method="post" action="{% url 'livros:url_apagar' link.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="botao botao--limpo botao--pequeno" aria-label="Remover o URL {{ link.descricao|default:link.url }}">Remover</button>
+            </form>
           </li>
         {% endfor %}
       </ul>
     {% else %}
-      <p class="vazio-bloco">Ainda sem URLs. A gestão de URLs chega na fase 2.</p>
+      <p class="vazio-bloco">Ainda sem URLs. Junta a ficha do livro, uma crítica ou onde o compraste.</p>
     {% endif %}
+
+    <details class="acrescentar" {% if form_url.errors %}open{% endif %}>
+      <summary>+ Adicionar URL</summary>
+      <form method="post" action="{% url 'livros:url_criar' livro.pk %}" class="acrescentar__formulario">
+        {% csrf_token %}
+        <div class="campo">
+          <label for="{{ form_url.url.id_for_label }}">{{ form_url.url.label }}</label>
+          {{ form_url.url }}
+          {% if form_url.url.errors %}<p class="erro-campo">{{ form_url.url.errors.0 }}</p>{% endif %}
+        </div>
+        <div class="campo">
+          <label for="{{ form_url.descricao.id_for_label }}">{{ form_url.descricao.label }}</label>
+          {{ form_url.descricao }}
+          {% if form_url.descricao.errors %}<p class="erro-campo">{{ form_url.descricao.errors.0 }}</p>{% endif %}
+        </div>
+        <button type="submit" class="botao botao--secundario botao--pequeno">Adicionar URL</button>
+      </form>
+    </details>
   </section>
 
   <section class="bloco">
     <h2 class="bloco__titulo">Notas <span class="contador">{{ livro.notas.count }}</span></h2>
+
     {% if livro.notas.all %}
       <ul class="notas">
         {% for nota in livro.notas.all %}
           <li class="nota">
             <p class="nota__texto">{{ nota.texto|linebreaksbr }}</p>
-            <span class="nota__data">{{ nota.criado_em|date:"d/m/Y H:i" }}</span>
+            <div class="nota__rodape">
+              <span class="nota__data">{{ nota.criado_em|date:"d/m/Y H:i" }}</span>
+              <form method="post" action="{% url 'livros:nota_apagar' nota.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="botao botao--limpo botao--pequeno">Remover</button>
+              </form>
+            </div>
           </li>
         {% endfor %}
       </ul>
     {% else %}
-      <p class="vazio-bloco">Ainda sem notas. A gestão de notas chega na fase 2.</p>
+      <p class="vazio-bloco">Ainda sem notas. Aponta aqui o que te ficou do livro.</p>
     {% endif %}
+
+    <details class="acrescentar" {% if form_nota.errors %}open{% endif %}>
+      <summary>+ Adicionar nota</summary>
+      <form method="post" action="{% url 'livros:nota_criar' livro.pk %}" class="acrescentar__formulario">
+        {% csrf_token %}
+        <div class="campo">
+          <label for="{{ form_nota.texto.id_for_label }}">{{ form_nota.texto.label }}</label>
+          {{ form_nota.texto }}
+          {% if form_nota.texto.errors %}<p class="erro-campo">{{ form_nota.texto.errors.0 }}</p>{% endif %}
+        </div>
+        <button type="submit" class="botao botao--secundario botao--pequeno">Adicionar nota</button>
+      </form>
+    </details>
   </section>
 
   <footer class="ficha__acoes">

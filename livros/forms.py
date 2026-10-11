@@ -1,10 +1,29 @@
 """Formulários do domínio dos livros."""
 
-from datetime import date
+from datetime import date, datetime
 
 from django import forms
 
 from .models import LinkLivro, Livro, NotaLivro
+
+
+class DataBRWidget(forms.TextInput):
+    """Campo de data em texto, sempre em dd/mm/aaaa.
+
+    Não uso `type="date"`: o campo nativo do browser mostra a data no formato
+    do sistema do utilizador (aparece mm/dd/yyyy num browser em inglês), e não
+    há forma de o forçar pela página. Assim o formato é sempre o mesmo,
+    independentemente do browser.
+    """
+
+    def format_value(self, value):
+        if value in (None, ""):
+            return ""
+        if isinstance(value, datetime):
+            return value.strftime("%d/%m/%Y")
+        if isinstance(value, date):
+            return value.strftime("%d/%m/%Y")
+        return super().format_value(value)
 
 
 class EstrelasField(forms.TypedChoiceField):
@@ -24,9 +43,18 @@ class LivroForm(forms.ModelForm):
     data_leitura = forms.DateField(
         label="Data de leitura",
         required=False,
-        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
-        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
-        help_text="Dia em que acabaste o livro (deixa vazio enquanto estiveres a ler).",
+        input_formats=["%d/%m/%Y", "%Y-%m-%d"],
+        widget=DataBRWidget(
+            attrs={
+                "placeholder": "dd/mm/aaaa",
+                "inputmode": "numeric",
+                "autocomplete": "off",
+                "size": 12,
+            }
+        ),
+        help_text="Dia em que acabaste o livro, no formato dd/mm/aaaa "
+        "(deixa vazio enquanto estiveres a ler).",
+        error_messages={"invalid": "Escreve a data no formato dd/mm/aaaa (ex.: 14/08/2026)."},
     )
     avaliacao = EstrelasField(
         label="Avaliação",

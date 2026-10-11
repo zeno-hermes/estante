@@ -338,12 +338,33 @@ input:focus, select:focus, textarea:focus {
 .lista-simples li { display: flex; flex-direction: column; }
 .lista-simples__secundario { font-size: 0.82rem; color: var(--cor-texto-suave); font-family: var(--mono); overflow-wrap: anywhere; }
 
+/* Item de uma relação 1:N (URL ou nota): conteúdo à esquerda, ação à direita.
+   O seletor inclui `li` de propósito: `.lista-simples li` tem mais
+   especificidade e, sem isto, empilhava o item (coluna) em vez de o pôr em linha. */
+.lista-simples li.item-relacao {
+  flex-direction: row; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: 0.6rem 0.75rem;
+  background: var(--cor-superficie-2); border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-pequeno);
+}
+.item-relacao__conteudo { display: flex; flex-direction: column; min-width: 0; }
+.item-relacao__conteudo a { overflow-wrap: anywhere; }
+.item-relacao form, .nota__rodape form { margin: 0; flex-shrink: 0; }
+
+/* Formulário de acrescentar, escondido atrás de um <details> (sem JavaScript) */
+.acrescentar { margin-top: 0.9rem; border: 1px dashed var(--cor-borda-forte); border-radius: var(--raio-pequeno); padding: 0.6rem 0.85rem; }
+.acrescentar summary { cursor: pointer; font-weight: 550; font-size: 0.92rem; color: var(--cor-primaria); }
+.acrescentar summary:hover { color: var(--cor-primaria-escura); }
+.acrescentar__formulario { margin-top: 0.9rem; max-width: 520px; }
+.acrescentar__formulario .campo:last-of-type { margin-bottom: 0.75rem; }
+
 .notas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
 .nota {
   background: var(--cor-superficie-2); border: 1px solid var(--cor-borda);
   border-left: 3px solid var(--cor-primaria); border-radius: var(--raio-pequeno); padding: 0.75rem 0.9rem;
 }
 .nota__texto { margin: 0 0 0.35rem; }
+.nota__rodape { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .nota__data { font-size: 0.78rem; color: var(--cor-texto-suave); }
 
 .ficha__acoes { display: flex; gap: 0.75rem; margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--cor-borda); }

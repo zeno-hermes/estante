@@ -83,3 +83,74 @@ barra de topo com 61 px e uma só linha, sem scroll horizontal.
   num browser em pt-PT mostrará `dd/mm/aaaa`. O valor guardado é sempre ISO.
 - **Acessibilidade**: foco visível e contraste foram desenhados, mas não medidos com
   ferramenta de acessibilidade nem testados com leitor de ecrã.
+
+## Alteração pedida: data sempre em dd/mm/aaaa (2026-10-11)
+
+O campo era `type="date"`, que mostra a data no formato do sistema do utilizador — no
+browser de verificação aparecia `mm/dd/yyyy`. Passou a ser um campo de texto com widget
+próprio (`DataBRWidget`), placeholder `dd/mm/aaaa` e `inputmode="numeric"`:
+
+| Verificação | Resultado |
+|---|---|
+| `manage.py test` | 86/86 `OK` |
+| Campo no browser | `type: text`, `valor: 14/08/2026`, `placeholder: dd/mm/aaaa` |
+| Entrada em dd/mm/aaaa | aceite (`01/06/2025` → `date(2025, 6, 1)`) |
+| Entrada em ISO | aceite por compatibilidade (`2025-06-01`) |
+| Entrada com formato errado | rejeitada com «Escreve a data no formato dd/mm/aaaa (ex.: 14/08/2026).» |
+| Listagem e ficha | já usavam `|date:"d/m/Y"` — `14/08/2026`, `11/10/2026 19:53` |
+
+**Custo assumido:** perde-se o calendário nativo do browser. Não há forma de forçar o
+formato de um `type="date"` — a escolha foi entre formato determinístico e calendário.
+
+## Fase 2 — URLs e notas na ficha do livro (2026-10-11)
+
+### Testes automáticos
+
+86/86 `OK` (29 novos nesta fase):
+
+- **Adicionar URL**: grava no livro certo, aceita descrição vazia, vários URLs no mesmo
+  livro, `GET` → `405`, anónimo → `302` para o login, livro alheio → `404`.
+- **URL inválido**: `400`, nada gravado, erro no formulário e **o texto escrito não se
+  perde** (a ficha é redesenhada com o que o utilizador escreveu).
+- **Apagar URL**: mantém o livro e as notas; URL de outro utilizador → `404`; `GET` → `405`.
+- **Adicionar/apagar nota**: nota vazia rejeitada; várias notas ordenadas da mais recente;
+  apagar nota mantém o livro e os URLs; nota alheia → `404`.
+- **Sem token CSRF** (cliente com `enforce_csrf_checks`): criar URL, criar nota e apagar
+  livro devolvem `403` e não alteram nada.
+- **Ficha**: mostra os dois formulários de acrescentar, um botão de remover por item,
+  contadores iguais ao que está na BD, links externos com `target="_blank"` e
+  `rel="noopener noreferrer"`, e a data em `dd/mm/aaaa`.
+- **Cascata pela interface**: apagar o livro apaga URLs e notas.
+
+### Verificação no browser real (fluxo completo, com dados de exemplo)
+
+| Passo | Resultado observado |
+|---|---|
+| Ficha do livro | 2 formulários de acrescentar, 1 URL e 1 nota existentes |
+| Adicionar URL pela interface | mensagem «URL adicionado ao livro.», 2 URLs na página, texto novo visível |
+| Adicionar nota pela interface | mensagem «Nota adicionada ao livro.», 2 notas na página |
+| Remover URL pela interface | mensagem «URL removido.», 1 URL e **2 notas intactas** |
+| Estado na BD (verificação independente) | `LinkLivro` e `NotaLivro` coerentes com o que a página mostrava |
+| A 390 px | sem scroll horizontal; itens e botões alinhados |
+
+### Defeito encontrado e corrigido nesta fase
+
+Os itens de URL apareciam **empilhados e centrados** em vez de lado a lado. Causa:
+`.lista-simples li` (especificidade 0,1,1) sobrepunha-se a `.item-relacao` (0,1,0).
+Corrigido com `.lista-simples li.item-relacao`. Reverificado por medição no browser:
+`flexDirection: row`, conteúdo à esquerda (x=151), botão à direita (x=1020), mesma linha,
+sem transbordo do cartão. **Não era visível em testes de HTML — só em pixel.**
+
+### Desvio ao plano
+
+O plano previa `inlineformset_factory` para acrescentar 1-2 URLs/notas logo na criação do
+livro. Não foi feito: os formulários de acrescentar vivem na ficha do livro, que é a única
+superfície de edição (uma página a menos para manter, e é a mesma que a PWA mobile vai
+reutilizar). Quem cria um livro é encaminhado para a lista com uma mensagem a lembrar que
+a ficha do livro é onde se juntam URLs e notas.
+
+### Dados reais já em uso
+
+A conta `dinis` foi criada pelo próprio utilizador e tem um livro registado pela interface
+(«O estrangeiro», Albert Camus, 01/09/2026, 5 estrelas) — gravado corretamente. Os dados de
+exemplo usam uma conta separada (`revisao`) e nunca tocaram na conta real.

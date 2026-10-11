@@ -1,18 +1,23 @@
-"""Views do site desktop: lista, ficha e CRUD de livros.
+"""Views do site desktop: lista, ficha e CRUD de livros, URLs e notas.
 
 Regra transversal: tudo é filtrado por `utilizador=request.user`. Um livro de
-outro utilizador não existe para quem pergunta — devolve 404, não 403.
+outro utilizador não existe para quem pergunta — devolve 404, não 403. A mesma
+regra aplica-se em cadeia: um URL ou uma nota só é acessível através de um
+livro do próprio utilizador.
 """
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count, Q
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from .forms import LivroForm
-from .models import Livro
+from .forms import LinkLivroForm, LivroForm, NotaLivroForm
+from .models import LinkLivro, Livro, NotaLivro
 
 PAGINA_TAMANHO = 20
 
@@ -119,6 +124,12 @@ class LivroDetalheView(LivrosDoUtilizadorMixin, DetailView):
     def get_queryset(self):
         return super().get_queryset().prefetch_related("urls", "notas")
 
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto.setdefault("form_url", LinkLivroForm())
+        contexto.setdefault("form_nota", NotaLivroForm())
+        return contexto
+
 
 class LivroCriarView(LivrosDoUtilizadorMixin, CreateView):
     model = Livro
@@ -139,7 +150,11 @@ class LivroCriarView(LivrosDoUtilizadorMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.utilizador = self.request.user
-        messages.success(self.request, f"«{form.instance.titulo}» guardado na estante.")
+        messages.success(
+            self.request,
+            f"«{form.instance.titulo}» guardado na estante. "
+            "Abre a ficha do livro para juntar URLs e notas.",
+        )
         return super().form_valid(form)
 
 
@@ -173,3 +188,73 @@ class LivroApagarView(LivrosDoUtilizadorMixin, DeleteView):
     def form_valid(self, form):
         messages.success(self.request, f"«{self.object.titulo}» foi apagado.")
         return super().form_valid(form)
+
+
+# --------------------------------------------------------------------------
+# URLs e notas do livro (relações 1:N)
+#
+# Os formulários de adicionar vivem na própria ficha do livro e falam com
+# estas vistas; se a validação falhar, a ficha é redesenhada com os erros e o
+# que o utilizador escreveu, em vez de perder o texto.
+# --------------------------------------------------------------------------
+
+
+def livro_do_utilizador(request, pk):
+    """O livro pedido, ou 404 se for de outra pessoa (ou não existir)."""
+    return get_object_or_404(Livro, pk=pk, utilizador=request.user)
+
+
+def ficha_contexto(livro, form_url=None, form_nota=None):
+    return {
+        "livro": livro,
+        "form_url": form_url or LinkLivroForm(),
+        "form_nota": form_nota or NotaLivroForm(),
+    }
+
+
+@login_required
+@require_POST
+def url_criar(request, pk):
+    livro = livro_do_utilizador(request, pk)
+    form = LinkLivroForm(request.POST)
+    if form.is_valid():
+        link = form.save(commit=False)
+        link.livro = livro
+        link.save()
+        messages.success(request, "URL adicionado ao livro.")
+        return redirect("livros:detalhe", pk=livro.pk)
+    return render(request, "livros/detalhe.html", ficha_contexto(livro, form_url=form), status=400)
+
+
+@login_required
+@require_POST
+def url_apagar(request, pk):
+    link = get_object_or_404(LinkLivro, pk=pk, livro__utilizador=request.user)
+    livro = link.livro
+    link.delete()
+    messages.success(request, "URL removido.")
+    return redirect("livros:detalhe", pk=livro.pk)
+
+
+@login_required
+@require_POST
+def nota_criar(request, pk):
+    livro = livro_do_utilizador(request, pk)
+    form = NotaLivroForm(request.POST)
+    if form.is_valid():
+        nota = form.save(commit=False)
+        nota.livro = livro
+        nota.save()
+        messages.success(request, "Nota adicionada ao livro.")
+        return redirect("livros:detalhe", pk=livro.pk)
+    return render(request, "livros/detalhe.html", ficha_contexto(livro, form_nota=form), status=400)
+
+
+@login_required
+@require_POST
+def nota_apagar(request, pk):
+    nota = get_object_or_404(NotaLivro, pk=pk, livro__utilizador=request.user)
+    livro = nota.livro
+    nota.delete()
+    messages.success(request, "Nota removida.")
+    return redirect("livros:detalhe", pk=livro.pk)

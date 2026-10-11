@@ -54,7 +54,7 @@ class CriarLivroTests(BaseComUtilizador):
             {
                 "titulo": "Dune",
                 "autor": "Frank Herbert",
-                "data_leitura": "2025-06-01",
+                "data_leitura": "01/06/2025",
                 "avaliacao": "5",
                 "estado": "lido",
             },
@@ -65,6 +65,33 @@ class CriarLivroTests(BaseComUtilizador):
         self.assertEqual(livro.data_leitura, date(2025, 6, 1))
         self.assertEqual(livro.avaliacao, 5)
         self.assertEqual(livro.estado, Livro.Estado.LIDO)
+
+    def test_data_em_formato_iso_tambem_e_aceite(self):
+        # compatibilidade: dados importados ou colados em ISO continuam a entrar
+        self.client.post(
+            reverse("livros:criar"),
+            {"titulo": "Em ISO", "autor": "X", "data_leitura": "2025-06-01", "avaliacao": "", "estado": "lido"},
+        )
+        self.assertEqual(Livro.objects.get(titulo="Em ISO").data_leitura, date(2025, 6, 1))
+
+    def test_data_escrita_em_formato_errado_da_erro_explicito(self):
+        resposta = self.client.post(
+            reverse("livros:criar"),
+            {"titulo": "Data má", "autor": "X", "data_leitura": "14-08-2026", "avaliacao": "", "estado": "lido"},
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "formato dd/mm/aaaa")
+        self.assertFalse(Livro.objects.filter(titulo="Data má").exists())
+
+    def test_campo_de_data_usa_dd_mm_aaaa_e_nao_o_campo_nativo_do_browser(self):
+        resposta = self.client.get(reverse("livros:criar"))
+        self.assertContains(resposta, 'placeholder="dd/mm/aaaa"')
+        self.assertNotContains(resposta, 'type="date"')
+
+    def test_edicao_mostra_a_data_existente_em_dd_mm_aaaa(self):
+        livro = self.criar_livro()
+        resposta = self.client.get(reverse("livros:editar", args=[livro.pk]))
+        self.assertContains(resposta, 'value="12/03/2024"')
 
     def test_criar_sem_avaliacao_guarda_nulo(self):
         self.client.post(
@@ -77,10 +104,16 @@ class CriarLivroTests(BaseComUtilizador):
         self.assertEqual(livro.estado, Livro.Estado.A_LER)
 
     def test_data_no_futuro_e_rejeitada(self):
-        futuro = (date.today() + timedelta(days=3)).isoformat()
+        futuro = date.today() + timedelta(days=3)
         resposta = self.client.post(
             reverse("livros:criar"),
-            {"titulo": "Impossível", "autor": "X", "data_leitura": futuro, "avaliacao": "", "estado": "lido"},
+            {
+                "titulo": "Impossível",
+                "autor": "X",
+                "data_leitura": f"{futuro.day:02d}/{futuro.month:02d}/{futuro.year}",
+                "avaliacao": "",
+                "estado": "lido",
+            },
         )
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "não pode estar no futuro")
@@ -109,7 +142,7 @@ class CriarLivroTests(BaseComUtilizador):
             {
                 "titulo": "Ensaio sobre a Cegueira",
                 "autor": "José Saramago",
-                "data_leitura": "2024-03-12",
+                "data_leitura": "12/03/2024",
                 "avaliacao": "",
                 "estado": "lido",
             },
@@ -125,7 +158,7 @@ class CriarLivroTests(BaseComUtilizador):
             {
                 "titulo": "Ensaio sobre a Cegueira",
                 "autor": "José Saramago",
-                "data_leitura": "2026-02-02",
+                "data_leitura": "02/02/2026",
                 "avaliacao": "4",
                 "estado": "lido",
             },
@@ -156,7 +189,7 @@ class CriarLivroTests(BaseComUtilizador):
             {
                 "titulo": "Ensaio sobre a Cegueira",
                 "autor": "José Saramago",
-                "data_leitura": "2024-03-12",
+                "data_leitura": "12/03/2024",
                 "avaliacao": "",
                 "estado": "lido",
             },
@@ -192,7 +225,7 @@ class EditarEApagarTests(BaseComUtilizador):
             {
                 "titulo": "Ensaio sobre a Cegueira",
                 "autor": "José Saramago",
-                "data_leitura": "2024-03-12",
+                "data_leitura": "12/03/2024",
                 "avaliacao": "4",
                 "estado": "abandonado",
             },
