@@ -408,3 +408,43 @@ as 14 mais recentes. **Restauro verificado**: contagens de `auth_user`, `livros_
 - **Acessibilidade medida** (leitor de ecrã, contraste com ferramenta): não testada.
 - **Reinício da VM**: ambos os serviços estão `enabled`, mas não foi feito um reboot real
   (a VM serve outro serviço em produção).
+
+## Correção — campo de data no telemóvel (11/10/2026)
+
+Reportado pelo utilizador: na app mobile não aparecia calendário e o teclado só mostrava
+números, sem tecla «/», pelo que era impossível escrever a data. Causa: o campo tinha sido
+trocado para texto com `inputmode="numeric"` para garantir `dd/mm/aaaa`, e o teclado numérico
+do Android não tem barra.
+
+O que passou a existir (medido em viewport 390x844, no computador e em produção):
+
+| Elemento | Medida |
+| --- | --- |
+| Campo de escrita | `type=text`, `inputmode=numeric`, `placeholder=dd/mm/aaaa`, 268x47 px |
+| Botão de calendário | 48x47 px (toque ≥ 44), ícone SVG de 22x22 px visível |
+| Campo nativo por cima | invisível (`opacity: 0`), **sem `name`** (não é submetido), alinhado |
+| Escrita só com números | `2` → `24` → `24/0` → `24/09` → `24/09/2026` |
+| Ano com dois dígitos | `14/08/26` → ao sair do campo → `14/08/2026` |
+| Calendário | escolha de `2026-07-03` → campo passa a `03/07/2026` |
+| Clique no botão | chama `showPicker()` do campo nativo (abre o calendário do sistema) |
+
+Gravação verificada de ponta a ponta: livro criado a 24/09/2026 escrito só com números e
+outro a 03/07/2026 escolhido no calendário, ambos com a data certa na ficha; a validação
+«data no futuro» continua a recusar (apanhou uma tentativa de teste com 24/12/2026).
+Em produção (`https://estante.duckdns.org/pwa/novo/`) confirmado o mesmo comportamento, sem
+gravar nada. 133 testes verdes.
+
+Dois defeitos encontrados pelo caminho:
+
+1. **O botão do calendário estava vazio.** O indicador nativo do `type="date"`
+   (`::-webkit-calendar-picker-indicator`) não é desenhado no Chrome em modo móvel: o botão
+   ficava um quadrado branco. Passou a ter ícone SVG próprio, com o campo nativo invisível
+   por cima para o toque continuar a abrir o calendário do sistema (iOS não tem `showPicker`).
+2. **A cache do service worker guardava CSS/JS antigos.** O `install` fazia
+   `cache.addAll(...)` e os pedidos iam à cache HTTP do browser: a cache nova
+   (`...-2026-10-12.1`) continha o CSS e o JS **velhos** — o bump de versão parecia não pegar.
+   Passou a `cache: 'reload'` em cada pedido, com teste de contrato sobre o `sw.js` renderizado.
+   Versão da cache subida para `2026-10-12.2`.
+
+Nada disto se vê em testes de HTML: só por medição no browser (`getBoundingClientRect`,
+`getComputedStyle`, `caches.match(...)`) e depois de forçar `registration.update()`.
