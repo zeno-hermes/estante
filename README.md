@@ -118,32 +118,52 @@ docs/VERIFICACAO.md  o que foi verificado, como, e o que ficou por verificar
 - Estáticos são cache-first; páginas de `/pwa/` são network-first com aviso visível quando
   vêm da cache; `/pwa/entrar/` e respostas redirecionadas nunca entram na cache.
 
-## Produção (fase 5, ainda não feita)
+## Produção
 
-Alvo: VM Oracle com Nginx + Certbot e um subdomínio DuckDNS. Variáveis em
-`/etc/estante/estante.env` (nunca no repositório):
+**Está em produção: https://estante.duckdns.org/** (VM Oracle Cloud com Nginx + Let's Encrypt,
+Gunicorn atrás do proxy, SQLite em disco local da VM).
+
+Variáveis em `/etc/estante/estante.env` (nunca no repositório; valores entre plicas — a chave
+do Django tem caracteres que partem o ficheiro sem aspas):
 
 ```
-DEBUG=false
-SECRET_KEY=<gerada na VM>
-ALLOWED_HOSTS=<subdominio>.duckdns.org
-CSRF_TRUSTED_ORIGINS=https://<subdominio>.duckdns.org
-EMAIL_HOST=            # só se quiseres usar o "recuperar password" do /admin/
+DEBUG='false'
+SECRET_KEY='<gerada na VM>'
+ALLOWED_HOSTS='estante.duckdns.org'
+CSRF_TRUSTED_ORIGINS='https://estante.duckdns.org'
+DB_PATH='/var/lib/estante/db.sqlite3'
+STATIC_ROOT_DIR='/var/lib/estante/staticfiles'
+EMAIL_HOST=''          # só se quiseres usar o "recuperar password" do /admin/
 ```
 
-Já verificado em modo produção (com `DEBUG=false`, na máquina local):
+A base de dados e os estáticos ficam **fora do checkout** (`DB_PATH`, `STATIC_ROOT_DIR`): o
+`git reset --hard` do deploy mexe no código, não nos dados.
 
-- `manage.py check --deploy` → `no issues`;
-- HTTP é redirecionado para HTTPS (`301`);
-- cabeçalhos presentes: `Strict-Transport-Security` (1 ano, includeSubDomains, preload),
-  `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`;
-- estáticos servidos pelo WhiteNoise com nome com hash (`estante.25f81d45728e.css`), 200 e
-  gzip ativo (19 KB → 4,5 KB);
-- `/saude/` responde JSON público para o healthcheck do deploy.
+Publicar uma alteração (na VM):
 
-Passos que faltam: criar o subdomínio DuckDNS, `systemd` + Gunicorn em `127.0.0.1:8124`,
-Nginx com `proxy_pass`, Certbot, script `deploy-estante` idempotente e backup do SQLite.
-Atenção ao `iptables` da Oracle Cloud (um `REJECT` inicial bloqueia 80/443 antes do UFW).
+```bash
+sudo deploy-estante        # git fetch + reset, dependências, migrate, collectstatic, restart
+                           # e healthcheck que verifica o corpo de /saude/
+```
+
+Backup diário automático do SQLite (guarda as 14 cópias mais recentes):
+
+```bash
+sudo systemctl start estante-backup.service     # forçar um backup agora
+sudo ls -lt /var/backups/estante/ | head
+```
+
+Restauro: parar o serviço, repor `db.sqlite3` a partir da cópia, corrigir o dono, arrancar e
+confirmar `/saude/`.
+
+Verificado em produção (detalhe em `docs/VERIFICACAO.md`): `check --deploy` sem problemas,
+HTTP → HTTPS (301), cabeçalhos HSTS/nosniff/X-Frame-Options, estáticos com hash e gzip
+(19 KB → 4,5 KB), PWA instalável (`installabilityErrors` vazio), offline a funcionar com o
+serviço parado e restauro de backup conferido contra a base viva.
+
+Os detalhes operacionais (endereços, chaves, caminhos, firewall, certificados e o conteúdo
+dos serviços systemd/Nginx) vivem num runbook privado, fora deste repositório. **Atenção ao
+`iptables` da Oracle Cloud**: um `REJECT` inicial pode bloquear 80/443 antes do UFW.
 
 ## Estado do desenvolvimento
 
@@ -153,8 +173,8 @@ Atenção ao `iptables` da Oracle Cloud (um `REJECT` inicial bloqueia 80/443 ant
 | 1 — Autenticação e CRUD de livros (desktop) | concluída |
 | 2 — URLs e notas (1:N) na ficha do livro | concluída |
 | 3 — PWA mobile (`/pwa/`) | concluída |
-| 4 — Verificação final e documentação | concluída (falta criar o repositório no GitHub) |
-| 5 — Publicação HTTPS (VM Oracle + DuckDNS) | não iniciada |
+| 4 — Verificação final e documentação | concluída |
+| 5 — Publicação HTTPS (VM Oracle + DuckDNS) | concluída e em produção |
 
 ### Criar dados de exemplo (opcional)
 
@@ -164,4 +184,5 @@ Atenção ao `iptables` da Oracle Cloud (um `REJECT` inicial bloqueia 80/443 ant
 
 ## Repositório
 
-Remoto previsto (SSH, conta `zeno-hermes`): `git@github-zeno:zeno-hermes/estante.git`.
+Público em `https://github.com/zeno-hermes/estante` (remoto SSH local: `git@github-zeno:zeno-hermes/estante.git`).
+Sem segredos: `.env`, bases de dados e runbooks de infraestrutura ficam fora.

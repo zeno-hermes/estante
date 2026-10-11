@@ -321,3 +321,90 @@ iguais** (`auth_user` 2, `django_session` 10, `livros_livro` 9, `livros_linklivr
 
 - Push e repositório no GitHub (bloqueado no ponto acima).
 - Fase 5: tudo o que é da VM Oracle, HTTPS, DuckDNS, systemd, Nginx e Certbot.
+
+## Fase 5 — Publicação com HTTPS (2026-10-11)
+
+**URL pública: https://estante.duckdns.org/** — aplicação a correr numa VM Oracle Cloud
+partilhada com outro serviço (isolada: utilizador, venv, base de dados, porta, serviço
+systemd e vhost Nginx próprios).
+
+Arquitetura: `HTTPS:443 → Nginx (TLS Let's Encrypt) → gunicorn em 127.0.0.1:8124 →
+Django (estante.wsgi) + WhiteNoise → SQLite`. Os detalhes operacionais (endereços, chaves,
+caminhos, firewall, certificados) ficam num runbook privado, fora do repositório — este
+documento regista apenas o que foi verificado.
+
+### Verificação a partir de fora (como um telemóvel qualquer)
+
+| Verificação | Resultado observado |
+|---|---|
+| Certificado TLS | `subject=CN = estante.duckdns.org`, emitido por Let's Encrypt, válido 89 dias |
+| HTTP → HTTPS | `301 https://estante.duckdns.org/` |
+| `/saude/` | `200`, `application/json`, `{"status": "ok", "bd": "ok"}` |
+| Cabeçalhos de segurança | `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` |
+| `/` e `/livros/` sem sessão | `302` → `/entrar/?next=…` |
+| `/pwa/` sem sessão | `302` → **`/pwa/entrar/`** (login da app, sem abertura em cadeia) |
+| Manifest | `200 application/manifest+json` |
+| `sw.js` | `200 application/javascript` + `Service-Worker-Allowed: /pwa/` |
+| Estáticos com hash | `estante.25f81d45728e.css` → `200`, `text/css`, 19 159 bytes; com gzip 4 527 bytes |
+| Ícone da PWA | `/static/pwa/icons/icon-192.png` → `200` |
+
+### PWA sobre HTTPS (browser real, viewport Android 390×844)
+
+| Verificação | Resultado observado |
+|---|---|
+| Contexto seguro | `window.isSecureContext: true` |
+| Service worker | scope `https://estante.duckdns.org/pwa/`, `activated`, a controlar a página |
+| Caches | `estante-estaticos-…` e `estante-dados-…` só com a versão atual |
+| Instalabilidade | `Page.getInstallabilityErrors` → **lista vazia** (instalável no telemóvel) |
+| Alvos de toque | mínimo 44 px, nenhum abaixo |
+| Login e dados reais | a conta do Dinis entrou e «O estrangeiro» apareceu na lista |
+
+### Offline em produção (serviço parado, não emulado)
+
+| Cenário | Resultado observado |
+|---|---|
+| `systemctl stop estante.service` | `502` do Nginx — tratado como falta de rede pelo service worker |
+| Recarregar `/pwa/` | lista da cache com a faixa «Sem ligação — a mostrar dados guardados em 11/10/2026, 21:24:38» e o livro visível |
+| URL nunca visitado | página de recurso «Sem ligação / Não há nada guardado…» |
+| Serviço religado | faixa desaparece, dados frescos da rede |
+
+### Backup em produção
+
+Cópia diária do SQLite com a API `.backup` (consistente com a aplicação a correr), guardando
+as 14 mais recentes. **Restauro verificado**: contagens de `auth_user`, `livros_livro`,
+`livros_linklivro` e `livros_notalivro` iguais às da base viva e
+`PRAGMA integrity_check` → `ok`.
+
+### Defeitos encontrados e corrigidos nesta fase
+
+1. **Ficheiro de ambiente inválido.** A `SECRET_KEY` do Django contém `(`, `%`, `$`, `^`:
+   escrito sem aspas, o ficheiro partia a leitura por shell (`syntax error near unexpected
+   token`) e a aplicação não arrancava com as variáveis. Passou a ser escrito com os valores
+   entre plicas e a verificação passou a incluir `set -a; . ficheiro` e comprimento de cada
+   variável.
+2. **A base de dados e os estáticos estavam dentro do checkout Git.** O `git reset --hard`
+   do deploy mexe-lhes. Acrescentados `DB_PATH` e `STATIC_ROOT_DIR` (fora do checkout,
+   valores por omissão iguais em desenvolvimento).
+3. **A app mobile mostrava a página de erro do proxy.** Com o serviço parado o Nginx devolve
+   `502` e o service worker só recorria à cache em falha de rede. Agora `5xx` é tratado como
+   falta de rede (mostra o que estava guardado, com aviso).
+4. **`cache.put()` sem `await`.** O service worker devolvia a resposta e podia ser terminado
+   antes de a escrita concluir: a cache de dados ficava vazia e o offline só funcionava por
+   sorte. Visto apenas em produção.
+5. **O healthcheck do deploy aceitava um `301`.** `curl -f` não falha em redirecionamentos,
+   portanto o script dizia «deploy ok» com a aplicação a redirecionar para HTTPS. Passou a
+   verificar o **corpo** de `/saude/` (`"status": "ok"`) com `X-Forwarded-Proto: https`.
+6. **O plugin Nginx do Certbot não estava instalado** na VM (`python3-certbot-nginx`), o que
+   fazia o `certbot --nginx` falhar.
+
+### Ainda por verificar (fase 5)
+
+- **Instalação da app num telemóvel real**: o browser garante que é instalável
+  (`installabilityErrors` vazio), mas a instalação em si tem de ser feita no telefone.
+- **iOS/Safari**: o aviso com as instruções de «Adicionar ao ecrã principal» existe, mas não
+  foi testado em iOS.
+- **Avisos de expiração do certificado**: a conta Let's Encrypt foi criada sem email de
+  contacto, portanto a renovação é automática mas não há aviso se falhar.
+- **Acessibilidade medida** (leitor de ecrã, contraste com ferramenta): não testada.
+- **Reinício da VM**: ambos os serviços estão `enabled`, mas não foi feito um reboot real
+  (a VM serve outro serviço em produção).
