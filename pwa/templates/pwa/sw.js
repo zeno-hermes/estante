@@ -78,7 +78,10 @@ async function paginaNetworkFirst(pedido) {
     const guardavel = resposta.ok && !resposta.redirected && !pedido.url.includes('/entrar/');
     if (guardavel) {
       const cache = await caches.open(CACHE_DADOS);
-      cache.put(pedido, resposta.clone());
+      // `await` obrigatório: o handler termina quando devolvemos a resposta e o
+      // service worker pode ser terminado antes de a escrita acabar (a cache
+      // ficava vazia e o modo offline não funcionava — visto só em produção).
+      await cache.put(pedido, resposta.clone());
       return resposta;
     }
     // 5xx = servidor alcançável mas aplicação em baixo (ex.: Nginx a devolver 502
