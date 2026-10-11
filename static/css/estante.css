@@ -184,18 +184,18 @@ a:hover { color: var(--cor-primaria-escura); }
 }
 
 .livro {
-  display: flex; flex-direction: column; gap: 0.5rem;
+  display: flex; flex-direction: column; gap: 0.5rem; min-width: 0;
   padding: 1rem 1rem 0.9rem; border-left: 4px solid var(--cor-borda-forte);
 }
 .livro--lido { border-left-color: var(--cor-lido); }
 .livro--a_ler { border-left-color: var(--cor-a-ler); }
 .livro--abandonado { border-left-color: var(--cor-abandonado); }
 
-.livro__topo { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-.livro__titulo { font-size: 1.05rem; margin: 0; }
+.livro__topo { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0; }
+.livro__titulo { font-size: 1.05rem; margin: 0; overflow-wrap: anywhere; }
 .livro__titulo a { color: var(--cor-texto); text-decoration: none; }
 .livro__titulo a:hover { color: var(--cor-primaria); text-decoration: underline; }
-.livro__autor { color: var(--cor-texto-suave); margin: 0; font-size: 0.95rem; }
+.livro__autor { color: var(--cor-texto-suave); margin: 0; font-size: 0.95rem; overflow-wrap: anywhere; }
 
 .livro__meta {
   display: flex; gap: 1.25rem; margin: 0.25rem 0 0;
@@ -402,7 +402,12 @@ input:focus, select:focus, textarea:focus {
 /* ---------------------------------------------------------------- rodapé */
 
 .rodape { border-top: 1px solid var(--cor-borda); padding: 1.25rem 0; }
-.rodape__interior { color: var(--cor-texto-suave); font-size: 0.82rem; }
+.rodape__interior {
+  color: var(--cor-texto-suave); font-size: 0.82rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.rodape__ligacao { color: var(--cor-texto-suave); text-decoration: none; }
+.rodape__ligacao:hover { color: var(--cor-primaria); text-decoration: underline; }
 
 /* -------------------------------------------------------------- responsivo */
 

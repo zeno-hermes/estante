@@ -24,6 +24,7 @@ urlpatterns = [
     ),
     path("sair/", auth_views.LogoutView.as_view(), name="sair"),
     path("livros/", include("livros.urls")),
+    path("pwa/", include("pwa.urls")),
     path("admin/", admin.site.urls),
     path("saude/", saude, name="saude"),
 ]

@@ -75,7 +75,7 @@ docs/PLANO.md    plano de implementação por fases
 | 0 — Fundação (projeto, modelos, migrações, healthcheck) | concluída |
 | 1 — Autenticação e CRUD de livros (desktop) | concluída (interface para revisão) |
 | 2 — URLs e notas (1:N) na ficha do livro | concluída |
-| 3 — PWA mobile (`/pwa/`) | pendente |
+| 3 — PWA mobile (`/pwa/`) | concluída (instalação real no telemóvel depende da fase 5) |
 | 4 — Verificação final, documentação e GitHub | pendente |
 | 5 — Publicação HTTPS (VM Oracle + DuckDNS) | não iniciada (decisão do Dinis) |
 

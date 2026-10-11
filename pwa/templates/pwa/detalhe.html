@@ -1,0 +1,104 @@
+{% extends "pwa/base.html" %}
+
+{% block titulo %}{{ livro.titulo }} — Estante{% endblock %}
+
+{% block conteudo %}
+<article class="cartao ficha ficha--{{ livro.estado }}">
+  <span class="etiqueta etiqueta--{{ livro.estado }}">{{ livro.get_estado_display }}</span>
+  <h1 class="ficha__titulo">{{ livro.titulo }}</h1>
+  <p class="ficha__autor">{{ livro.autor }}</p>
+
+  {% if livro.avaliacao %}
+    <p class="ficha__estrelas"><span class="estrelas">{{ livro.estrelas }}</span> <span class="ficha__nota">{{ livro.avaliacao }}/5</span></p>
+  {% endif %}
+
+  <dl class="dados">
+    <div><dt>Leitura</dt><dd>{% if livro.data_leitura %}{{ livro.data_leitura|date:"d/m/Y" }}{% else %}por terminar{% endif %}</dd></div>
+    <div><dt>Estado</dt><dd>{{ livro.get_estado_display }}</dd></div>
+  </dl>
+
+  <div class="acoes-ficha">
+    <a class="botao botao--secundario" href="{% url 'pwa:editar' livro.pk %}">Editar</a>
+    <a class="botao botao--perigo" href="{% url 'pwa:apagar' livro.pk %}">Apagar</a>
+  </div>
+</article>
+
+<section class="bloco">
+  <h2 class="bloco__titulo">URLs <span class="pilula">{{ livro.urls.count }}</span></h2>
+
+  {% if livro.urls.all %}
+    <ul class="lista-simples">
+      {% for link in livro.urls.all %}
+        <li class="item">
+          <div class="item__texto">
+            <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.descricao|default:link.url }}</a>
+            {% if link.descricao %}<span class="item__secundario">{{ link.url }}</span>{% endif %}
+          </div>
+          <form method="post" action="{% url 'pwa:url_apagar' link.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="botao botao--limpo">Remover</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="vazio-bloco">Sem URLs.</p>
+  {% endif %}
+
+  <details class="acrescentar" {% if form_url.errors %}open{% endif %}>
+    <summary>+ Adicionar URL</summary>
+    <form method="post" action="{% url 'pwa:url_criar' livro.pk %}">
+      {% csrf_token %}
+      <div class="campo">
+        <label for="{{ form_url.url.id_for_label }}">{{ form_url.url.label }}</label>
+        {{ form_url.url }}
+        {% if form_url.url.errors %}<p class="erro-campo">{{ form_url.url.errors.0 }}</p>{% endif %}
+      </div>
+      <div class="campo">
+        <label for="{{ form_url.descricao.id_for_label }}">{{ form_url.descricao.label }}</label>
+        {{ form_url.descricao }}
+        {% if form_url.descricao.errors %}<p class="erro-campo">{{ form_url.descricao.errors.0 }}</p>{% endif %}
+      </div>
+      <button type="submit" class="botao botao--secundario">Adicionar URL</button>
+    </form>
+  </details>
+</section>
+
+<section class="bloco">
+  <h2 class="bloco__titulo">Notas <span class="pilula">{{ livro.notas.count }}</span></h2>
+
+  {% if livro.notas.all %}
+    <ul class="notas">
+      {% for nota in livro.notas.all %}
+        <li class="nota">
+          <p class="nota__texto">{{ nota.texto|linebreaksbr }}</p>
+          <div class="nota__rodape">
+            <span class="item__secundario">{{ nota.criado_em|date:"d/m/Y H:i" }}</span>
+            <form method="post" action="{% url 'pwa:nota_apagar' nota.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="botao botao--limpo">Remover</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="vazio-bloco">Sem notas.</p>
+  {% endif %}
+
+  <details class="acrescentar" {% if form_nota.errors %}open{% endif %}>
+    <summary>+ Adicionar nota</summary>
+    <form method="post" action="{% url 'pwa:nota_criar' livro.pk %}">
+      {% csrf_token %}
+      <div class="campo">
+        <label for="{{ form_nota.texto.id_for_label }}">{{ form_nota.texto.label }}</label>
+        {{ form_nota.texto }}
+        {% if form_nota.texto.errors %}<p class="erro-campo">{{ form_nota.texto.errors.0 }}</p>{% endif %}
+      </div>
+      <button type="submit" class="botao botao--secundario">Adicionar nota</button>
+    </form>
+  </details>
+</section>
+
+<a class="ligacao-voltar" href="{% url 'pwa:lista' %}">← Voltar à lista</a>
+{% endblock %}

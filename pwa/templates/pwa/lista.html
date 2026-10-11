@@ -1,0 +1,68 @@
+{% extends "pwa/base.html" %}
+
+{% block titulo %}Livros — Estante{% endblock %}
+
+{% block conteudo %}
+<form class="pesquisa" method="get" action="{% url 'pwa:lista' %}" role="search">
+  {% if estado_ativo %}<input type="hidden" name="estado" value="{{ estado_ativo }}">{% endif %}
+  <label class="visualmente-oculto" for="id_q">Pesquisar</label>
+  <input type="search" id="id_q" name="q" value="{{ pesquisa }}" placeholder="Título, autor ou nota…" autocomplete="off" enterkeyhint="search">
+  <button type="submit" class="botao botao--secundario botao--pequeno">Buscar</button>
+</form>
+
+<nav class="chips" aria-label="Filtrar por estado">
+  {% for filtro in filtros_url %}
+    <a class="chip {% if estado_ativo == filtro.valor %}chip--ativo{% endif %}" href="{{ filtro.url }}">{{ filtro.etiqueta }}</a>
+  {% endfor %}
+</nav>
+
+<p class="carimbo">
+  {{ total }} livro{{ total|pluralize }} · atualizado {{ atualizado_em|date:"d/m/Y H:i:s" }}
+</p>
+
+{% if livros %}
+  <ul class="lista">
+    {% for livro in livros %}
+      <li>
+        <a class="cartao livro livro--{{ livro.estado }}" href="{% url 'pwa:detalhe' livro.pk %}">
+          <span class="livro__linha1">
+            <span class="etiqueta etiqueta--{{ livro.estado }}">{{ livro.get_estado_display }}</span>
+            {% if livro.avaliacao %}<span class="estrelas">{{ livro.estrelas }}</span>{% endif %}
+          </span>
+          <span class="livro__titulo">{{ livro.titulo }}</span>
+          <span class="livro__autor">{{ livro.autor }}</span>
+          <span class="livro__rodape">
+            <span>{% if livro.data_leitura %}{{ livro.data_leitura|date:"d/m/Y" }}{% else %}por terminar{% endif %}</span>
+            <span class="livro__contadores">
+              {% if livro.total_notas %}<span class="pilula">{{ livro.total_notas }} nota{{ livro.total_notas|pluralize }}</span>{% endif %}
+              {% if livro.total_urls %}<span class="pilula">{{ livro.total_urls }} URL{{ livro.total_urls|pluralize }}</span>{% endif %}
+            </span>
+          </span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% if is_paginated %}
+    <nav class="paginacao" aria-label="Paginação">
+      {% if page_obj.has_previous %}
+        <a class="botao botao--secundario botao--pequeno" href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">← Anterior</a>
+      {% endif %}
+      <span class="paginacao__estado">{{ page_obj.number }} / {{ paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a class="botao botao--secundario botao--pequeno" href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Seguinte →</a>
+      {% endif %}
+    </nav>
+  {% endif %}
+{% else %}
+  <div class="vazio">
+    {% if pesquisa or estado_ativo %}
+      <p>Sem resultados para este filtro.</p>
+      <a class="botao botao--secundario" href="{% url 'pwa:lista' %}">Limpar</a>
+    {% else %}
+      <p>Ainda não tens livros registados.</p>
+      <a class="botao botao--primario" href="{% url 'pwa:criar' %}">Registar o primeiro</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

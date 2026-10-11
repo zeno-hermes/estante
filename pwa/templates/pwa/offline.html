@@ -1,0 +1,12 @@
+{% extends "pwa/base.html" %}
+
+{% block titulo %}Sem ligação — Estante{% endblock %}
+
+{% block conteudo %}
+<section class="cartao vazio">
+  <h1>Sem ligação</h1>
+  <p>Não há rede e esta página ainda não tinha sido guardada no telemóvel.</p>
+  <p>Volta a tentar quando tiveres ligação.</p>
+  <a class="botao botao--secundario" href="{% url 'pwa:lista' %}">Tentar outra vez</a>
+</section>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "pwa/base.html" %}
+
+{% block titulo %}Apagar — Estante{% endblock %}
+
+{% block conteudo %}
+<section class="cartao confirmar">
+  <h1>Apagar «{{ livro.titulo }}»?</h1>
+  <p>As notas e os URLs deste livro são apagados também. Não há forma de voltar atrás.</p>
+  <p class="item__secundario">{{ livro.notas.count }} notas · {{ livro.urls.count }} URLs</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="formulario__acoes">
+      <button type="submit" class="botao botao--perigo botao--largo">Apagar definitivamente</button>
+    </div>
+  </form>
+  <a class="ligacao-voltar" href="{% url 'pwa:detalhe' livro.pk %}">Cancelar</a>
+</section>
+{% endblock %}

@@ -154,3 +154,97 @@ a ficha do livro é onde se juntam URLs e notas.
 A conta `dinis` foi criada pelo próprio utilizador e tem um livro registado pela interface
 («O estrangeiro», Albert Camus, 01/09/2026, 5 estrelas) — gravado corretamente. Os dados de
 exemplo usam uma conta separada (`revisao`) e nunca tocaram na conta real.
+
+## Fase 3 — PWA mobile em /pwa/ (2026-10-11)
+
+### Testes automáticos
+
+120/120 `OK` (34 novos nesta fase, em `pwa/tests.py`):
+
+- **Acesso**: `/pwa/` e `/pwa/novo/` sem sessão vão para `/pwa/entrar/` (e não para o
+  login do site desktop); login mobile volta para a lista mobile e respeita `?next=`;
+  `sair` volta à entrada mobile.
+- **Sem CDNs**: o HTML do shell não contém `cdn`, `unpkg` nem `googleapis` (a app tem de
+  funcionar offline).
+- **Manifest**: content-type `application/manifest+json`, `Cache-Control: no-cache`, JSON
+  válido, `name`/`start_url`/`scope`/`display`/`lang`, 4 ícones declarados com `any` e
+  `maskable` em 192 e 512.
+- **Service worker**: content-type JavaScript, `Service-Worker-Allowed: /pwa/`,
+  `Cache-Control: no-cache`, versão da cache presente, e **zero restos de template**
+  (`{%`, `{{`, `}}`); nomes de cache de estáticos e de dados presentes.
+- **Lista**: cartões no HTML == livros na BD, só os do utilizador, carimbo de atualização,
+  filtro por estado, pesquisa, paginação 25/página e **links de filtro sem parâmetros
+  acumulados** (`estado=lido&estado=…`).
+- **Escrita**: criar livro (data em `dd/mm/aaaa`), editar, apagar (cascata), adicionar e
+  remover URL e nota, tudo com resposta em `/pwa/…`.
+- **Recusas**: `GET` em endpoint de escrita → `405`; livro de outro utilizador → `404` em
+  sete rotas diferentes (detalhe, editar, apagar, adicionar/remover URL e nota); sem CSRF →
+  `403` (cliente com `enforce_csrf_checks`).
+
+### Smoke test HTTP real
+
+`scripts/smoke_test.py` (só biblioteca padrão, contra `runserver` a correr):
+**61/61 verificações passaram**. Cria um utilizador descartável, extrai o CSRF do HTML do
+login, autentica com cookie real, percorre o fluxo completo e compara a página com a BD;
+apaga a conta no fim. Inclui o `Service-Worker-Allowed`, os content-types, o JSON do
+manifest, os quatro ícones acessíveis, e as escritas reais (URL, nota, cascata).
+
+### Verificação no browser real (Chrome, viewport Android 390×844)
+
+| Verificação | Resultado observado |
+|---|---|
+| Registo do service worker | `scope: http://127.0.0.1:8000/pwa/`, estado `activated`, página controlada |
+| Caches | `estante-estaticos-2026-10-11.3` e `estante-dados-2026-10-11.3`, só estas |
+| Pré-cache de estáticos | pwa.css, pwa.js, 2 ícones, manifest, página offline |
+| Instalabilidade (`Page.getInstallabilityErrors`) | **lista vazia** — a app é instalável |
+| Alvos de toque | 8 alvos, mínimo **44 px**, nenhum abaixo |
+| Scroll horizontal a 390 px | não (`scrollWidth == innerWidth == 390`) |
+| Barra inferior | `position: fixed`; conteúdo com 84 px reservados + safe-area |
+| Título muito longo (medido com elemento injetado) | trunca (visível 322 px de 789 px de texto), dentro do cartão |
+| Escrita ponta a ponta | criar livro pelo telemóvel → ficha aberta com a mensagem |
+| Convite a instalar | aparece (`beforeinstallprompt` disparou no Chrome de teste) |
+
+### Offline (servidor desligado, não emulado)
+
+A emulação de rede por CDP (`Network.emulateNetworkConditions offline`) **não** afeta os
+pedidos feitos pelo próprio service worker — esse teste não prova nada. A verificação foi
+feita **desligando o servidor**:
+
+| Cenário | Resultado observado |
+|---|---|
+| Lista já visitada, sem servidor | vem da cache, com faixa «Sem ligação — a mostrar dados guardados em 11/10/2026, 20:34:07» |
+| Posição da faixa | topo 58 px (mesmo ponto onde acaba a barra), sem sobrepor conteúdo, `sticky` |
+| Página nunca guardada, sem servidor | cai na página de recurso «Sem ligação / Não há rede e esta página ainda não tinha sido guardada» |
+| Servidor de volta | faixa desaparece e a página volta a ser servida pela rede |
+
+### Defeitos encontrados e corrigidos nesta fase
+
+1. **App instalada abria em cadeia.** Sem sessão, `/pwa/` redirecionava para `/entrar/`, o
+   login do **site desktop**, e daí para `/livros/`. Corrigido com `login_url` próprio nas
+   views da PWA (`LOGIN_PWA`). Apanhado por teste, não por inspeção.
+2. **Título longo esticava o cartão em vez de ser cortado.** `min-width: auto` nos itens
+   flex: o cartão crescia até 825 px dentro de uma página de 390 px. Corrigido com
+   `min-width: 0` (aplica-se ao shell mobile e aos cartões do site desktop).
+3. **Faixa de aviso fora do ecrã.** O service worker injetava o aviso antes de `</body>`,
+   ou seja depois da barra inferior fixa: existia no DOM e não se via. Passou a ser
+   injetado a seguir a `</header>`, dentro do fluxo. (A primeira tentativa, logo após
+   `<body>`, ficava por baixo da barra de topo — também corrigida.)
+4. **O teste de offline não testava nada.** Ver nota acima; a metodologia passou a ser
+   desligar o servidor.
+
+### Versões da cache (regra)
+
+`PWA_CACHE_VERSION` subiu três vezes nesta fase: `.1` inicial, `.2` depois da correção de
+`min-width` no CSS, `.3` depois do estilo da faixa de aviso. **Regra: qualquer alteração a
+`pwa.css`, `pwa.js` ou aos ícones exige subir a constante**, e o telemóvel só adota a nova
+versão quando o browser deteta o novo service worker (numa visita ou recarga seguinte) —
+confirmado ao forçar `registration.update()` e ver a cache antiga desaparecer no `activate`.
+
+### Ainda não verificado
+
+- **Instalação real num telemóvel**: exige HTTPS (localhost não conta para o telefone).
+  Fica para a fase 5, com o domínio DuckDNS.
+- **iOS/Safari**: só está previsto o aviso com as instruções de «Adicionar ao ecrã
+  principal»; não foi testado em iOS.
+- **Leitor de ecrã / acessibilidade medida**: não testado com ferramenta.
+- **PWA em produção**: nada disto corre ainda fora desta máquina.
